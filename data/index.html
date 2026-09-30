@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Mahasiswa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --text:#1b2336; --muted:#667085; --line:#e4e7ef;
+  --primary:#2f5bea; --primary-soft:#e8eefe;
+  --ok:#12a150; --ok-soft:#e3f6ea; --warn:#d98a00; --warn-soft:#fff3d9;
+  --bad:#d92d20; --bad-soft:#fde8e6; --info:#6b4ce6;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 4px 16px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1420; --panel:#171e2e; --text:#e6e9f2; --muted:#98a2b3; --line:#27304a;
+    --primary:#6c8cff; --primary-soft:#1f2a4d; --ok:#3ccb7f; --ok-soft:#133224;
+    --warn:#f5b546; --warn-soft:#3a2d10; --bad:#ff6b5e; --bad-soft:#3d1a18; --info:#a18bff;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1420; --panel:#171e2e; --text:#e6e9f2; --muted:#98a2b3; --line:#27304a;
+  --primary:#6c8cff; --primary-soft:#1f2a4d; --ok:#3ccb7f; --ok-soft:#133224;
+  --warn:#f5b546; --warn-soft:#3a2d10; --bad:#ff6b5e; --bad-soft:#3d1a18; --info:#a18bff;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:14px;line-height:1.5}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end;margin-bottom:20px}
+header h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em}
+header .sub{color:var(--muted);margin-top:2px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button,.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:8px 14px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button:hover,.btn:hover{border-color:var(--primary)}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.notice{background:var(--warn-soft);color:var(--text);border:1px solid var(--warn);border-radius:12px;padding:10px 14px;margin-bottom:16px;display:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.card .lbl{color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.card .val{font-size:28px;font-weight:800;margin-top:4px}
+.card .hint{font-size:12px;color:var(--muted)}
+.card.ok .val{color:var(--ok)} .card.warn .val{color:var(--warn)} .card.bad .val{color:var(--bad)} .card.pri .val{color:var(--primary)}
+.grid2{display:grid;grid-template-columns:1fr 1.4fr;gap:14px;margin-bottom:18px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.panel h2{margin:0 0 12px;font-size:15px;font-weight:700}
+.chartbox{position:relative;height:240px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.toolbar input,.toolbar select,.settings input{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:8px 12px}
+.toolbar input[type=search]{flex:1;min-width:200px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:880px}
+th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;user-select:none}
+th:hover{color:var(--primary)}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--primary-soft)}
+td.num{text-align:right;font-variant-numeric:tabular-nums} th.num{text-align:right}
+.bar{display:flex;align-items:center;gap:8px}
+.bar .track{width:70px;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar .fill{height:100%;border-radius:6px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.b-ok{background:var(--ok-soft);color:var(--ok)} .b-warn{background:var(--warn-soft);color:var(--warn)} .b-bad{background:var(--bad-soft);color:var(--bad)}
+.grade{font-weight:800}
+.empty{text-align:center;color:var(--muted);padding:30px}
+.settings{display:none;margin-bottom:18px}
+.settings.show{display:block}
+.settings .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.settings label{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:var(--muted);gap:4px}
+.settings input[type=number]{width:100px}
+dialog{border:none;border-radius:18px;padding:0;max-width:640px;width:calc(100% - 32px);background:var(--panel);color:var(--text);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(10,15,30,.5)}
+.mhead{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
+.mhead h3{margin:0;font-size:18px}
+.mbody{padding:18px 22px}
+.pres{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:6px;margin:8px 0 16px}
+.pres div{text-align:center;border-radius:8px;padding:6px 0;font-size:11px;font-weight:700}
+.pres small{display:block;font-weight:500;opacity:.8}
+.pH{background:var(--ok-soft);color:var(--ok)} .pI,.pS{background:var(--warn-soft);color:var(--warn)} .pA{background:var(--bad-soft);color:var(--bad)} .pX{background:var(--line);color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.kv div{background:var(--bg);border-radius:10px;padding:10px}
+.kv b{display:block;font-size:18px}
+.kv span{font-size:11px;color:var(--muted);text-transform:uppercase}
+.notes{margin:0;padding-left:18px}
+.legend{font-size:12px;color:var(--muted)}
+footer{margin-top:28px;color:var(--muted);font-size:12px;text-align:center}
+.tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:none;background:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 16px;color:var(--muted);font-size:15px}
+.tabs button.active{color:var(--primary);border-bottom-color:var(--primary)}
+.hide{display:none!important}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:18px}
+.step h2{display:flex;align-items:center}
+.step .num{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--primary-soft);color:var(--primary);font-weight:800;margin-right:10px;font-size:13px}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:20px;text-align:center;color:var(--muted);cursor:pointer;margin:6px 0 10px;display:block;font-weight:600}
+.drop small{font-weight:400}
+.drop:hover,.drop.over{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+.fstatus{font-size:13px;margin:4px 0 10px}
+.fstatus.ok{color:var(--ok)} .fstatus.err{color:var(--bad)}
+.fstatus ul{margin:4px 0 0;padding-left:18px;color:var(--warn)}
+.small-btns{display:flex;flex-wrap:wrap;gap:6px}
+.small-btns button{font-size:12px;padding:6px 10px}
+.opts{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:18px}
+.opts label{display:flex;align-items:center;gap:6px;font-weight:600}
+.opts input[type=number]{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:8px 10px;width:90px}
+.opts .btn-primary{margin-left:auto}
+.ans{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin:8px 0 16px}
+.ans div{border-radius:8px;padding:6px 4px;text-align:center;font-size:11px;font-weight:700;word-break:break-word}
+.ans small{display:block;font-weight:500}
+.butir{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+.bhead{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:4px}
+.bhead input,.kv input{font:inherit;width:70px;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;padding:4px 8px}
+.concepts{margin:6px 0;padding-left:4px;list-style:none;font-size:13px}
+.concepts li{margin:3px 0}
+.ck{display:inline-block;width:18px;font-weight:800}.ck.ok{color:var(--ok)}.ck.half{color:var(--warn)}.ck.no{color:var(--bad)}
+.excerpt{white-space:pre-wrap;font-size:13px;background:var(--bg);border-radius:8px;padding:10px;max-height:260px;overflow:auto;margin-top:6px}
+details summary{cursor:pointer;color:var(--primary);font-size:13px;font-weight:600}
+dialog{max-width:760px}
+@media print{
+  .btns,.toolbar,.settings,.notice,footer{display:none!important}
+  body{background:#fff}
+  .card,.panel{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="judul">Dashboard Mahasiswa</h1>
+      <div class="sub" id="subjudul"></div>
+    </div>
+    <div class="btns">
+      <label class="btn" title="Unggah file CSV dari Excel">⬆ Unggah CSV<input type="file" id="fileInput" accept=".csv,text/csv" hidden></label>
+      <button id="btnExport">⬇ Ekspor Rekap</button>
+      <button id="btnDownloadData" title="Unduh data nilai terbaru dalam format mahasiswa.csv">💾 Unduh Data</button>
+      <button id="btnSettings">⚙ Pengaturan</button>
+      <button id="btnPrint">🖨 Cetak</button>
+      <button id="btnTheme" title="Ganti tema">◐</button>
+    </div>
+  </header>
+
+  <div class="notice" id="notice"></div>
+
+  <nav class="tabs">
+    <button data-tab="dash" class="active">📊 Dashboard</button>
+    <button data-tab="koreksi">✅ Koreksi Otomatis</button>
+  </nav>
+
+  <div id="tab-dash">
+
+  <section class="panel settings" id="settings">
+    <h2>Pengaturan Penilaian</h2>
+    <div class="row">
+      <label>Bobot Tugas (%)<input type="number" id="bTugas" min="0" max="100"></label>
+      <label>Bobot UTS (%)<input type="number" id="bUts" min="0" max="100"></label>
+      <label>Bobot UAS (%)<input type="number" id="bUas" min="0" max="100"></label>
+      <label>Min. Kehadiran (%)<input type="number" id="minHadir" min="0" max="100"></label>
+      <label>Batas Lulus (nilai)<input type="number" id="batasLulus" min="0" max="100"></label>
+      <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="izinSakit"> Izin/Sakit dihitung hadir</label>
+    </div>
+    <p class="legend" id="bobotInfo"></p>
+  </section>
+
+  <section class="cards" id="cards"></section>
+
+  <section class="grid2">
+    <div class="panel"><h2>Sebaran Nilai Huruf</h2><div class="chartbox"><canvas id="chartGrade"></canvas></div></div>
+    <div class="panel"><h2>Persentase Kehadiran per Pertemuan</h2><div class="chartbox"><canvas id="chartPres"></canvas></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Cari NIM atau nama…">
+      <select id="fKelas"><option value="">Semua kelas</option></select>
+      <select id="fStatus">
+        <option value="">Semua status</option>
+        <option value="Aman">Aman</option>
+        <option value="Perlu Perhatian">Perlu Perhatian</option>
+        <option value="Berisiko">Berisiko</option>
+      </select>
+      <span class="legend" id="countInfo"></span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th data-k="no">No</th>
+          <th data-k="nim">NIM</th>
+          <th data-k="nama">Nama</th>
+          <th data-k="kelas">Kelas</th>
+          <th data-k="persenHadir">Kehadiran</th>
+          <th data-k="rataTugas" class="num">Tugas</th>
+          <th data-k="uts" class="num">UTS</th>
+          <th data-k="uas" class="num">UAS</th>
+          <th data-k="na" class="num">Nilai Akhir</th>
+          <th data-k="huruf">Huruf</th>
+          <th data-k="statusRank">Status</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="legend">Klik baris untuk melihat detail mahasiswa. Klik judul kolom untuk mengurutkan. Presensi: H = Hadir, I = Izin, S = Sakit, A = Alpa.</p>
+  </section>
+  </div><!-- /tab-dash -->
+
+  <!-- ================= TAB KOREKSI OTOMATIS ================= -->
+  <div id="tab-koreksi" class="hide">
+    <section class="steps">
+      <div class="panel step">
+        <h2><span class="num">1</span>Kunci Jawaban / Pedoman Penskoran</h2>
+        <label class="drop" id="dropKey">📄 Klik atau seret file kunci jawaban ke sini<br><small>Pilihan ganda/isian: CSV, Excel, Word, PDF · Esai: pedoman penskoran Word (.docx) berisi tabel Butir | Aspek | Skor</small>
+          <input type="file" id="keyInput" accept=".csv,.xlsx,.xls,.txt,.docx,.doc,.pdf" hidden></label>
+        <div class="fstatus" id="keyStatus">Belum ada file.</div>
+        <div class="small-btns"><button id="tplKey">⬇ Template kunci jawaban</button></div>
+      </div>
+      <div class="panel step">
+        <h2><span class="num">2</span>Jawaban Mahasiswa</h2>
+        <label class="drop" id="dropAns">📚 Klik atau seret file jawaban ke sini — boleh banyak file sekaligus<br><small>CSV, Excel, Word (.docx), atau PDF · satu file berisi semua mahasiswa (mis. ekspor Google Form), atau satu file per mahasiswa</small>
+          <input type="file" id="ansInput" accept=".csv,.xlsx,.xls,.txt,.docx,.doc,.pdf" multiple hidden></label>
+        <div class="fstatus" id="ansStatus">Belum ada file.</div>
+        <div class="small-btns"><button id="tplAns">⬇ Template (satu file semua mahasiswa)</button><button id="tplAns1">⬇ Template (per mahasiswa)</button></div>
+      </div>
+    </section>
+
+    <section class="panel opts">
+      <span id="pgOpts" class="opts" style="margin:0">
+        <label><input type="checkbox" id="optPG" checked> Pilihan ganda: cukup cocokkan huruf opsi ("B. Harga pokok" dianggap B)</label>
+        <label>Nilai maksimal <input type="number" id="optMax" value="100" min="1"></label>
+      </span>
+      <span id="essayOpts" class="opts hide" style="margin:0">
+        <label title="Persentase poin kunci yang harus muncul agar butir mendapat skor penuh">Skor penuh bila ≥ <input type="number" id="optTarget" value="60" min="10" max="100">% poin kunci terpenuhi</label>
+        <label id="bahasaWrap">Skor bahasa awal <input type="number" id="optBahasa" value="0" min="0" step="0.5"></label>
+      </span>
+      <button class="btn-primary" id="btnGrade">✅ Periksa Jawaban</button>
+    </section>
+
+    <div id="gradeOut" class="hide">
+      <section class="cards" id="kCards"></section>
+      <section class="panel" style="margin-bottom:18px">
+        <h2 id="chartTitle">Analisis Butir Soal — persentase mahasiswa yang menjawab benar</h2>
+        <div class="chartbox"><canvas id="chartItem"></canvas></div>
+        <p class="legend" id="itemNote"></p>
+      </section>
+      <section class="panel">
+        <div class="toolbar">
+          <input type="search" id="kq" placeholder="Cari NIM atau nama…">
+          <select id="kTarget" title="Kolom nilai tujuan di dashboard"></select>
+          <button id="btnApply">➕ Masukkan ke Dashboard</button>
+          <button id="btnKExport">⬇ Ekspor Hasil Koreksi</button>
+        </div>
+        <div class="fstatus" id="applyStatus"></div>
+        <div class="tablewrap">
+          <table id="kTable">
+            <thead id="kHead"></thead>
+            <tbody id="kBody"></tbody>
+          </table>
+        </div>
+        <p class="legend">Klik baris untuk melihat jawaban mahasiswa per soal. Semua file hanya diproses di browser Anda — tidak diunggah ke mana pun.</p>
+      </section>
+    </div>
+  </div><!-- /tab-koreksi -->
+
+  <footer>Dashboard statis — data dibaca dari <code>data/mahasiswa.csv</code>. Diperbarui <span id="updated"></span>.</footer>
+</div>
+
+<dialog id="modal">
+  <div class="mhead">
+    <div><h3 id="mNama"></h3><div class="legend" id="mSub"></div></div>
+    <button id="mClose">✕</button>
+  </div>
+  <div class="mbody" id="mBody"></div>
+</dialog>
+
+<!-- Data contoh cadangan: dipakai jika file CSV tidak bisa dibaca (mis. dibuka langsung dari komputer) -->
+<script type="text/csv" id="sampleData">nim,nama,kelas,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,tugas1,tugas2,tugas3,tugas4,uts,uas
+2023010001,Adi Pratama,A,H,H,H,H,H,H,H,H,H,H,H,H,H,H,85,88,90,82,80,86
+2023010002,Bunga Lestari,A,H,H,H,I,H,H,H,H,H,H,H,H,H,H,90,92,88,95,87,91
+2023010003,Cahya Nugraha,A,H,A,H,H,A,H,H,A,H,H,A,H,A,H,70,65,0,72,60,58
+2023010004,Dewi Anggraini,A,H,H,H,H,H,S,S,H,H,H,H,H,H,H,78,80,82,79,75,77
+2023010005,Eko Saputra,A,H,H,A,H,H,H,H,H,A,H,H,H,H,H,65,70,68,60,55,62
+2023010006,Fitri Rahmawati,A,H,H,H,H,H,H,H,H,H,H,H,H,H,H,95,93,96,94,92,94
+2023010007,Galih Permana,A,A,A,H,A,H,A,A,H,A,H,A,H,A,A,50,0,45,0,40,35
+2023010008,Hana Salsabila,A,H,H,H,H,I,H,H,H,H,H,H,H,H,H,88,85,87,90,84,89
+2023010009,Irfan Maulana,A,H,H,H,H,H,H,H,H,H,H,A,H,H,H,75,72,70,78,68,71
+2023010010,Jihan Putri,A,H,H,H,H,H,H,H,H,H,H,H,H,H,H,82,84,80,86,79,83
+2023010011,Kevin Wijaya,B,H,H,H,H,H,H,H,H,H,H,H,H,H,H,80,78,83,81,76,80
+2023010012,Laras Ayuningtyas,B,H,H,S,H,H,H,H,H,H,H,H,H,H,H,86,90,89,88,85,87
+2023010013,Muhammad Rizki,B,H,A,H,H,H,A,H,H,A,H,H,H,H,H,60,62,58,65,57,54
+2023010014,Nadia Kusuma,B,H,H,H,H,H,H,H,H,H,H,H,H,H,H,92,94,90,93,90,92
+2023010015,Oki Setiawan,B,A,H,A,H,A,H,H,A,H,A,H,H,A,H,55,60,50,0,48,45
+2023010016,Putri Maharani,B,H,H,H,H,H,H,I,H,H,H,H,H,H,H,84,86,82,85,81,84
+2023010017,Rendi Firmansyah,B,H,H,H,H,H,H,H,H,H,H,H,A,H,H,72,75,70,74,66,69
+2023010018,Siti Nurhaliza,B,H,H,H,H,H,H,H,H,H,H,H,H,H,H,89,91,93,90,88,90
+2023010019,Taufik Hidayat,B,H,H,H,A,H,H,H,H,H,A,H,H,H,H,68,70,72,66,62,64
+2023010020,Umi Kalsum,B,H,H,H,H,H,H,H,H,H,H,H,H,S,H,81,83,85,80,78,82</script>
+
+<script>
+/* =========================================================
+   PENGATURAN — ubah bagian ini sesuai mata kuliah Anda
+   ========================================================= */
+const CONFIG = {
+  judul: "Dashboard Mahasiswa",
+  mataKuliah: "Praktikum Kebijakan Harga",
+  semester: "Ganjil 2026/2027",
+  dosen: "Nama Dosen",
+  dataUrl: "data/mahasiswa.csv",
+  bobot: { tugas: 30, uts: 30, uas: 40 },   // persen
+  minKehadiran: 75,          // syarat ikut UAS (%)
+  batasLulus: 60,            // nilai akhir minimal lulus
+  hitungIzinSakit: false,    // true = Izin/Sakit dihitung hadir
+  skalaNilai: [              // urut dari tertinggi
+    { min: 80, huruf: "A" }, { min: 75, huruf: "AB" }, { min: 70, huruf: "B" },
+    { min: 65, huruf: "BC" }, { min: 60, huruf: "C" }, { min: 50, huruf: "D" },
+    { min: 0,  huruf: "E" }
+  ]
+};
+/* ========================================================= */
+
+let RAW = [], DATA = [], sortKey = "no", sortDir = 1, charts = {};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const fmt = n => (Math.round(n * 10) / 10).toLocaleString("id-ID");
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function parseCSV(text) {
+  // Mendukung pemisah koma atau titik koma (Excel versi Indonesia)
+  const firstLine = text.split(/\r?\n/)[0];
+  const sep = (firstLine.split(";").length > firstLine.split(",").length) ? ";" : ",";
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === sep) { row.push(f); f = ""; }
+    else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; }
+    else if (c !== "\r") f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+
+const num = v => { const n = parseFloat(String(v ?? "").trim().replace(",", ".")); return isNaN(n) ? null : n; };
+
+function loadRows(rows) {
+  const head = rows[0].map(h => h.trim().toLowerCase().replace(/^\ufeff/, ""));
+  const idx = k => head.indexOf(k);
+  const pCols = head.map((h, i) => /^p\d+$/.test(h) ? i : -1).filter(i => i >= 0);
+  const tCols = head.map((h, i) => /^tugas\d*$/.test(h) ? i : -1).filter(i => i >= 0);
+  if (idx("nama") < 0) throw new Error("Kolom 'nama' tidak ditemukan di CSV.");
+  RAW = rows.slice(1).map((r, n) => ({
+    no: n + 1,
+    nim: (r[idx("nim")] || "").trim(),
+    nama: (r[idx("nama")] || "").trim(),
+    kelas: idx("kelas") >= 0 ? (r[idx("kelas")] || "").trim() : "-",
+    pres: pCols.map(i => (r[i] || "").trim().toUpperCase()),
+    presLabel: pCols.map(i => head[i].toUpperCase()),
+    tugas: tCols.map(i => num(r[i])),
+    uts: num(r[idx("uts")]),
+    uas: num(r[idx("uas")])
+  })).filter(m => m.nama);
+  const kelas = [...new Set(RAW.map(m => m.kelas))].sort();
+  $("#fKelas").innerHTML = '<option value="">Semua kelas</option>' + kelas.map(k => `<option>${esc(k)}</option>`).join("");
+  recompute();
+}
+
+function grade(n) { return CONFIG.skalaNilai.find(s => n >= s.min)?.huruf || "E"; }
+
+function recompute() {
+  const b = CONFIG.bobot, tot = (b.tugas + b.uts + b.uas) || 1;
+  DATA = RAW.map(m => {
+    const terisi = m.pres.filter(x => x).length;
+    const hadir = m.pres.filter(x => x === "H" || (CONFIG.hitungIzinSakit && (x === "I" || x === "S"))).length;
+    const alpa = m.pres.filter(x => x === "A").length;
+    const persenHadir = terisi ? hadir / terisi * 100 : 0;
+    const tv = m.tugas.map(t => t ?? 0);
+    const rataTugas = tv.length ? tv.reduce((a, c) => a + c, 0) / tv.length : 0;
+    const tugasKosong = m.tugas.filter(t => t === null || t === 0).length;
+    const uts = m.uts ?? 0, uas = m.uas ?? 0;
+    const na = (rataTugas * b.tugas + uts * b.uts + uas * b.uas) / tot;
+    const catatan = [];
+    if (persenHadir < CONFIG.minKehadiran) catatan.push(`Kehadiran ${fmt(persenHadir)}% di bawah syarat ${CONFIG.minKehadiran}% — tidak memenuhi syarat UAS.`);
+    if (na < CONFIG.batasLulus) catatan.push(`Nilai akhir ${fmt(na)} di bawah batas lulus ${CONFIG.batasLulus}.`);
+    if (tugasKosong) catatan.push(`${tugasKosong} tugas belum dikumpulkan / bernilai 0.`);
+    if (alpa >= 3) catatan.push(`Alpa ${alpa} kali.`);
+    if (na >= CONFIG.batasLulus && na < CONFIG.batasLulus + 10) catatan.push("Nilai akhir mendekati batas lulus.");
+    let status = "Aman";
+    if (persenHadir < CONFIG.minKehadiran || na < CONFIG.batasLulus) status = "Berisiko";
+    else if (catatan.length) status = "Perlu Perhatian";
+    return { ...m, terisi, hadir, alpa, persenHadir, rataTugas, tugasKosong, uts, uas, na, huruf: grade(na), status,
+             statusRank: { "Berisiko": 0, "Perlu Perhatian": 1, "Aman": 2 }[status], catatan };
+  });
+  render();
+}
+
+function filtered() {
+  const q = $("#q").value.trim().toLowerCase(), k = $("#fKelas").value, s = $("#fStatus").value;
+  return DATA.filter(m =>
+    (!q || m.nama.toLowerCase().includes(q) || m.nim.toLowerCase().includes(q)) &&
+    (!k || m.kelas === k) && (!s || m.status === s)
+  ).sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    return (typeof x === "string" ? x.localeCompare(y, "id") : x - y) * sortDir;
+  });
+}
+
+function render() {
+  const list = filtered();
+  const n = list.length || 1;
+  const avg = f => list.reduce((a, m) => a + f(m), 0) / n;
+  const cnt = s => list.filter(m => m.status === s).length;
+  const lulus = list.filter(m => m.na >= CONFIG.batasLulus && m.persenHadir >= CONFIG.minKehadiran).length;
+  $("#cards").innerHTML = [
+    ["pri", "Jumlah Mahasiswa", list.length, `dari ${DATA.length} total`],
+    ["", "Rata-rata Nilai Akhir", fmt(avg(m => m.na)), `huruf rata-rata ${grade(avg(m => m.na))}`],
+    ["", "Rata-rata Kehadiran", fmt(avg(m => m.persenHadir)) + "%", `syarat minimal ${CONFIG.minKehadiran}%`],
+    ["ok", "Diproyeksikan Lulus", lulus, `${fmt(lulus / n * 100)}% mahasiswa`],
+    ["warn", "Perlu Perhatian", cnt("Perlu Perhatian"), "tugas kosong / nilai mepet"],
+    ["bad", "Berisiko", cnt("Berisiko"), "kehadiran / nilai kurang"]
+  ].map(([c, l, v, h]) => `<div class="card ${c}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
+
+  const tb = $("#tbody");
+  if (!list.length) { tb.innerHTML = `<tr><td colspan="11" class="empty">Tidak ada data yang cocok.</td></tr>`; }
+  else tb.innerHTML = list.map(m => {
+    const col = m.persenHadir >= CONFIG.minKehadiran ? "var(--ok)" : "var(--bad)";
+    const bc = { "Aman": "b-ok", "Perlu Perhatian": "b-warn", "Berisiko": "b-bad" }[m.status];
+    return `<tr data-nim="${esc(m.nim)}" data-no="${m.no}">
+      <td>${m.no}</td><td>${esc(m.nim)}</td><td><b>${esc(m.nama)}</b></td><td>${esc(m.kelas)}</td>
+      <td><div class="bar"><div class="track"><div class="fill" style="width:${m.persenHadir}%;background:${col}"></div></div>${fmt(m.persenHadir)}%</div></td>
+      <td class="num">${fmt(m.rataTugas)}</td><td class="num">${fmt(m.uts)}</td><td class="num">${fmt(m.uas)}</td>
+      <td class="num"><b>${fmt(m.na)}</b></td><td class="grade">${m.huruf}</td>
+      <td><span class="badge ${bc}">${m.status}</span></td></tr>`;
+  }).join("");
+  $("#countInfo").textContent = `${list.length} mahasiswa ditampilkan`;
+  document.querySelectorAll("#tab-dash th").forEach(th => {
+    th.textContent = th.textContent.replace(/ [▲▼]$/, "");
+    if (th.dataset.k === sortKey) th.textContent += sortDir === 1 ? " ▲" : " ▼";
+  });
+  drawCharts(list);
+}
+
+function drawCharts(list) {
+  const letters = CONFIG.skalaNilai.map(s => s.huruf);
+  const counts = letters.map(h => list.filter(m => m.huruf === h).length);
+  const maxP = Math.max(0, ...list.map(m => m.pres.length));
+  const labels = (list[0]?.presLabel || []).slice(0, maxP);
+  const perMeet = labels.map((_, i) => {
+    const filled = list.filter(m => m.pres[i]);
+    if (!filled.length) return null;
+    return filled.filter(m => m.pres[i] === "H" || (CONFIG.hitungIzinSakit && ["I","S"].includes(m.pres[i]))).length / filled.length * 100;
+  });
+  const text = css("--muted"), grid = css("--line"), pri = css("--primary");
+  Chart.defaults.font.family = "Plus Jakarta Sans, system-ui, sans-serif";
+  Chart.defaults.color = text;
+  const gColors = letters.map(h => /^A/.test(h) ? css("--ok") : /^B/.test(h) ? pri : /^C/.test(h) ? css("--warn") : css("--bad"));
+  charts.g?.destroy(); charts.p?.destroy();
+  charts.g = new Chart($("#chartGrade"), {
+    type: "bar",
+    data: { labels: letters, datasets: [{ data: counts, backgroundColor: gColors, borderRadius: 8 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: grid } }, x: { grid: { display: false } } } }
+  });
+  charts.p = new Chart($("#chartPres"), {
+    type: "line",
+    data: { labels, datasets: [
+      { label: "Kehadiran (%)", data: perMeet, borderColor: pri, backgroundColor: pri + "33", fill: true, tension: .35, pointRadius: 4 },
+      { label: `Batas ${CONFIG.minKehadiran}%`, data: labels.map(() => CONFIG.minKehadiran), borderColor: css("--bad"), borderDash: [6, 6], pointRadius: 0, fill: false }
+    ] },
+    options: { maintainAspectRatio: false, plugins: { legend: { position: "bottom" } },
+      scales: { y: { min: 0, max: 100, grid: { color: grid } }, x: { grid: { display: false } } } }
+  });
+}
+
+function openDetail(no) {
+  const m = DATA.find(x => x.no === +no); if (!m) return;
+  $("#mNama").textContent = m.nama;
+  $("#mSub").textContent = `NIM ${m.nim} · Kelas ${m.kelas} · ${m.status}`;
+  const nm = { H: "Hadir", I: "Izin", S: "Sakit", A: "Alpa" };
+  $("#mBody").innerHTML = `
+    <div class="kv">
+      <div><span>Nilai Akhir</span><b>${fmt(m.na)} (${m.huruf})</b></div>
+      <div><span>Kehadiran</span><b>${fmt(m.persenHadir)}%</b></div>
+      <div><span>Alpa</span><b>${m.alpa}×</b></div>
+      <div><span>Rata-rata Tugas</span><b>${fmt(m.rataTugas)}</b></div>
+      <div><span>UTS</span><b>${fmt(m.uts)}</b></div>
+      <div><span>UAS</span><b>${fmt(m.uas)}</b></div>
+    </div>
+    <b>Presensi per pertemuan</b>
+    <div class="pres">${m.pres.map((p, i) => `<div class="p${p || "X"}" title="${nm[p] || "Belum diisi"}">${m.presLabel[i]}<small>${p || "–"}</small></div>`).join("")}</div>
+    <b>Nilai tugas</b>
+    <div class="pres">${m.tugas.map((t, i) => `<div class="${t === null || t === 0 ? "pA" : "pH"}">T${i + 1}<small>${t ?? "–"}</small></div>`).join("")}</div>
+    <b>Catatan pemeriksaan</b>
+    ${m.catatan.length ? `<ul class="notes">${m.catatan.map(c => `<li>${esc(c)}</li>`).join("")}</ul>` : `<p class="legend">Tidak ada catatan — mahasiswa dalam kondisi baik.</p>`}`;
+  $("#modal").showModal();
+}
+
+function exportCSV() {
+  const list = filtered();
+  const head = ["NIM", "Nama", "Kelas", "Hadir", "Pertemuan", "Kehadiran %", "Alpa", "Rata Tugas", "UTS", "UAS", "Nilai Akhir", "Huruf", "Status", "Catatan"];
+  const q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const rows = list.map(m => [m.nim, m.nama, m.kelas, m.hadir, m.terisi, fmt(m.persenHadir), m.alpa, fmt(m.rataTugas), m.uts, m.uas, fmt(m.na), m.huruf, m.status, m.catatan.join(" ")].map(q).join(";"));
+  const blob = new Blob(["\ufeff" + [head.map(q).join(";"), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `rekap-${CONFIG.mataKuliah.replace(/\s+/g, "-").toLowerCase()}.csv`; a.click();
+}
+
+function showNotice(t) { const n = $("#notice"); n.innerHTML = t; n.style.display = t ? "block" : "none"; }
+
+function syncSettings() {
+  $("#bTugas").value = CONFIG.bobot.tugas; $("#bUts").value = CONFIG.bobot.uts; $("#bUas").value = CONFIG.bobot.uas;
+  $("#minHadir").value = CONFIG.minKehadiran; $("#batasLulus").value = CONFIG.batasLulus; $("#izinSakit").checked = CONFIG.hitungIzinSakit;
+  const t = CONFIG.bobot.tugas + CONFIG.bobot.uts + CONFIG.bobot.uas;
+  $("#bobotInfo").textContent = `Total bobot: ${t}%` + (t !== 100 ? " — sebaiknya berjumlah 100% (nilai tetap dinormalisasi otomatis)." : "") +
+    " Perubahan di sini hanya berlaku sementara; untuk permanen ubah CONFIG di index.html.";
+}
+
+// ===== Event =====
+$("#q").addEventListener("input", render);
+$("#fKelas").addEventListener("change", render);
+$("#fStatus").addEventListener("change", render);
+document.querySelector("#tab-dash thead").addEventListener("click", e => {
+  const k = e.target.closest("th")?.dataset.k; if (!k) return;
+  if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = 1; }
+  render();
+});
+$("#tbody").addEventListener("click", e => { const tr = e.target.closest("tr[data-no]"); if (tr) openDetail(tr.dataset.no); });
+$("#mClose").addEventListener("click", () => $("#modal").close());
+$("#modal").addEventListener("click", e => { if (e.target === $("#modal")) $("#modal").close(); });
+$("#btnExport").addEventListener("click", exportCSV);
+$("#btnPrint").addEventListener("click", () => window.print());
+$("#btnSettings").addEventListener("click", () => $("#settings").classList.toggle("show"));
+$("#btnTheme").addEventListener("click", () => {
+  const r = document.documentElement, dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = r.dataset.theme || (dark ? "dark" : "light");
+  r.dataset.theme = cur === "dark" ? "light" : "dark"; render();
+});
+["bTugas", "bUts", "bUas", "minHadir", "batasLulus", "izinSakit"].forEach(id => $("#" + id).addEventListener("input", () => {
+  CONFIG.bobot = { tugas: +$("#bTugas").value || 0, uts: +$("#bUts").value || 0, uas: +$("#bUas").value || 0 };
+  CONFIG.minKehadiran = +$("#minHadir").value || 0; CONFIG.batasLulus = +$("#batasLulus").value || 0;
+  CONFIG.hitungIzinSakit = $("#izinSakit").checked;
+  syncSettings(); recompute();
+}));
+$("#fileInput").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { loadRows(parseCSV(rd.result)); showNotice(`Menampilkan data dari file <b>${esc(f.name)}</b> (hanya di browser Anda, tidak terunggah ke mana pun).`); } catch (err) { showNotice("Gagal membaca CSV: " + esc(err.message)); } };
+  rd.readAsText(f, "utf-8");
+});
+
+/* =========================================================
+   KOREKSI OTOMATIS
+   ========================================================= */
+let KEY = null, ANSFILES = [], KRES = [], kSortKey = "no", kSortDir = 1;
+const normH = s => String(s ?? "").replace(/^﻿/, "").trim().toLowerCase().replace(/\s+/g, " ");
+const normAns = s => String(s ?? "").trim().toUpperCase().replace(/\s+/g, " ");
+const RX_NO = /^(no|no\.|nomor|nomor soal|no soal|soal|butir|item)$/;
+const RX_ANS = /^(kunci|kunci jawaban|jawaban|jawab|answer|key)$/;
+const RX_W = /^(bobot|skor|poin|point|weight)$/;
+const RX_NIM = /\b(nim|npm|nrp)\b|nomor induk/;
+const RX_NAMA = /\bnama\b|^name$|full name/;
+const RX_KELAS = /\bkelas\b|^class$/;
+const RX_SKIP = /timestamp|stempel waktu|^waktu|e-?mail|^score$|^skor total|^total/;
+const isIdCol = h => RX_NIM.test(h) || RX_NAMA.test(h) || RX_KELAS.test(h) || RX_SKIP.test(h);
+const splitAlts = s => String(s ?? "").split(/\||\s+\/\s+/).map(normAns).filter(Boolean);
+const escRx = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const colMatchesNo = (h, n) => new RegExp(`^(soal|no|nomor|q|pertanyaan|butir|jawaban|jwb)?[\\s._#-]*${escRx(n)}([.):\\s-]|$)`).test(h);
+
+/* ---------- Membaca file: CSV, Excel, Word (.docx), PDF, TXT ---------- */
+const LIBS = {
+  pdf: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+  pdfWorker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
+  mammoth: "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"
+};
+const _loaded = {};
+function loadScript(src) {
+  return _loaded[src] || (_loaded[src] = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = src; s.onload = res;
+    s.onerror = () => { delete _loaded[src]; rej(new Error("Gagal memuat pembaca dokumen — periksa koneksi internet lalu coba lagi.")); };
+    document.head.appendChild(s);
+  }));
+}
+const fileBuf = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsArrayBuffer(f); });
+const fileText = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsText(f, "utf-8"); });
+
+function pdfLines(items) {
+  const its = items.filter(i => typeof i.str === "string" && i.str !== "")
+    .map(i => ({ s: i.str, x: i.transform[4], y: i.transform[5], w: i.width || 0 }))
+    .sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines = []; let cur = null;
+  for (const it of its) {
+    if (!cur || Math.abs(cur.y - it.y) > 3) { cur = { y: it.y, parts: [] }; lines.push(cur); }
+    cur.parts.push(it);
+  }
+  return lines.map(l => {
+    l.parts.sort((a, b) => a.x - b.x);
+    let s = "", end = null;
+    for (const p of l.parts) {
+      if (end !== null && p.x - end > 1 && !s.endsWith(" ") && !p.s.startsWith(" ")) s += " ";
+      s += p.s; end = p.x + p.w;
+    }
+    return s.trim();
+  }).filter(Boolean);
+}
+
+async function readAny(file) {
+  const name = file.name, ext = name.toLowerCase().split(".").pop();
+  if (ext === "doc") throw new Error("Format .doc (Word lama) belum didukung — buka di Word, lalu Simpan Sebagai .docx.");
+  if (ext === "xlsx" || ext === "xls") {
+    if (!window.XLSX) throw new Error("Pembaca Excel gagal dimuat — simpan file sebagai CSV lalu coba lagi.");
+    const wb = XLSX.read(await fileBuf(file), { type: "array" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "", raw: false })
+      .map(row => row.map(v => String(v))).filter(row => row.some(x => x.trim() !== ""));
+    return { name, rows };
+  }
+  if (ext === "docx") {
+    if (!window.mammoth) await loadScript(LIBS.mammoth);
+    const buf = await fileBuf(file);
+    const html = (await mammoth.convertToHtml({ arrayBuffer: buf.slice(0) })).value;
+    const text = (await mammoth.extractRawText({ arrayBuffer: buf.slice(0) })).value;
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const tables = [...doc.querySelectorAll("table")]
+      .map(tb => [...tb.querySelectorAll("tr")].map(tr => [...tr.children].map(c => c.textContent.trim())))
+      .filter(t => t.length > 1);
+    return { name, tables, text, html };
+  }
+  if (ext === "pdf") {
+    if (!window.pdfjsLib) await loadScript(LIBS.pdf);
+    if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) pdfjsLib.GlobalWorkerOptions.workerSrc = LIBS.pdfWorker;
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await fileBuf(file)) }).promise;
+    const lines = [];
+    for (let p = 1; p <= pdf.numPages; p++) lines.push(...pdfLines((await (await pdf.getPage(p)).getTextContent()).items));
+    const text = lines.join("\n");
+    if (!text.replace(/\s/g, "")) throw new Error("PDF tidak berisi teks (kemungkinan hasil scan/foto). Gunakan PDF hasil ketikan, atau Word/CSV.");
+    return { name, text };
+  }
+  const txt = await fileText(file), first = txt.replace(/^﻿/, "").split(/\r?\n/)[0] || "";
+  if (ext === "csv" || (first.split(/[,;]/).length >= 3)) return { name, rows: parseCSV(txt) };
+  return { name, text: txt };
+}
+
+/* ---------- Membaca pola jawaban dari teks dokumen (Word/PDF/TXT) ----------
+   Dikenali: "1. A", "1) B", "2 - C", "No. 3: D", "1. A  2. B  3. C" (satu baris),
+   "1 A" (tabel di PDF), nomor di satu baris lalu jawaban di baris berikutnya,
+   serta format soal + "Jawab: B". Identitas: "NIM: …", "Nama: …", "Kelas: …". */
+function parseTextDoc(text) {
+  text = String(text || "").replace(/ /g, " ");
+  const g = re => { const m = text.match(re); return m ? m[1].trim() : ""; };
+  const nim = g(/\b(?:nim|npm|nrp)\b\s*[:=.]?\s*([0-9][0-9A-Za-z.\-]{4,})/i);
+  const nama = g(/\bnama(?:\s+(?:lengkap|mahasiswa))?\s*[:=]\s*([^\n]+?)\s*(?=\s{2,}|\b(?:nim|npm|nrp|kelas)\b|$)/im);
+  const kelas = g(/\bkelas\s*[:=]\s*([^\n,;]+?)\s*(?=\s{2,}|\b(?:nim|npm|nrp|nama)\b|$)/im);
+  const mk = {}, jw = {}, wt = {}; let cur = null, pending = null;
+  const MK = /(?:^|\s)(?:(?:no|nomor|soal)\.?\s*)?(\d{1,3})\s*[.):\-]\s*(?!\d)/gi;
+  for (let line of text.split(/\r?\n/)) {
+    line = line.trim().replace(/\(\s*bobot\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*\)/gi, "⟦bobot:$1⟧"); if (!line) continue;
+    const j = line.match(/\b(?:jawab(?:an)?|jwb)\s*[:=]\s*(.+)$/i);
+    const ms = [...line.matchAll(MK)];
+    if (ms.length && ms[0].index === 0) {
+      ms.forEach((m, i) => {
+        const n = String(+m[1]), st = m.index + m[0].length, en = i + 1 < ms.length ? ms[i + 1].index : line.length;
+        let t = line.slice(st, en).trim();
+        const b = t.match(/⟦bobot:([^⟧]+)⟧/);
+        if (b) { wt[n] = num(b[1]); t = t.replace(b[0], "").trim(); }
+        cur = n;
+        if (t) { if (!(n in mk)) mk[n] = t; pending = null; } else pending = n;
+      });
+      if (j && cur) jw[cur] = j[1].trim();
+      continue;
+    }
+    if (j && cur) { jw[cur] = j[1].trim(); pending = null; continue; }
+    const sp = line.match(/^(\d{1,3})\s+(\S.{0,80})$/);
+    if (sp) { const n = String(+sp[1]); if (!(n in mk)) mk[n] = sp[2].trim(); cur = n; pending = null; continue; }
+    if (pending) { mk[pending] = line; pending = null; }
+  }
+  const map = Object.keys(jw).length ? jw : mk;
+  for (const k in map) map[k] = map[k].replace(/⟦bobot:[^⟧]+⟧/g, "").trim();
+  return { nim, nama, kelas, map, weights: wt };
+}
+
+function keyFromDoc(d) {
+  if (d.html) { const r = parseRubric(d.html, d.text); if (r) return r; }
+  if (d.rows) return buildKey(d.rows);
+  for (const t of d.tables || []) { try { const k = buildKey(t); if (k.mode === "list") return k; } catch (e) { } }
+  const p = parseTextDoc(d.text);
+  // ambil deret nomor soal utama (abaikan angka lepas seperti tanggal)
+  const all = Object.keys(p.map).map(Number).filter(n => n > 0).sort((a, b) => a - b), ns = [];
+  for (const n of all) { if (ns.length && n - ns[ns.length - 1] > 3) break; if (!ns.length && n > 3) continue; ns.push(n); }
+  if (!ns.length) throw new Error('Tidak menemukan pola nomor & kunci (mis. "1. A") di dokumen.');
+  return { mode: "list", items: ns.map(n => ({ n: String(n), label: "S" + n, alts: splitAlts(p.map[n]), w: p.weights[n] || 1 })).filter(it => it.alts.length) };
+}
+
+function idFromName(fname) {
+  const base = fname.replace(/\.[^.]+$/, ""), m = base.match(/^(\d{5,})[\s_-]+(.+)$/);
+  return m ? { nim: m[1], nama: m[2].replace(/[_]+/g, " ").trim() } : { nim: "", nama: base };
+}
+
+function studentsFromDoc(d) {
+  if (d.rows) return studentsFromFile(d.rows, d.name);
+  const p = d.text ? parseTextDoc(d.text) : null;
+  for (const t of d.tables || []) {
+    const r = studentsFromFile(t, d.name);
+    if (r.list.length && r.missing.length < KEY.items.length / 2) {
+      if (r.list.length === 1 && p) { const s = r.list[0]; if (p.nim) s.nim = p.nim; if (p.nama) s.nama = p.nama; if (p.kelas) s.kelas = p.kelas; }
+      return r;
+    }
+  }
+  if (!p) return { list: [], missing: [] };
+  const found = KEY.items.filter(it => it.n in p.map);
+  if (!found.length) return { list: [], missing: [] };
+  const fb = idFromName(d.name);
+  return {
+    list: [{ nim: p.nim || fb.nim, nama: p.nama || fb.nama, kelas: p.kelas || "", file: d.name, answers: KEY.items.map(it => p.map[it.n] ?? "") }],
+    missing: KEY.items.filter(it => !(it.n in p.map)).map(it => it.label)
+  };
+}
+
+function buildKey(rows) {
+  if (!rows.length) throw new Error("File kosong.");
+  const head = rows[0].map(normH);
+  const iNo = head.findIndex(h => RX_NO.test(h)), iK = head.findIndex(h => RX_ANS.test(h)), iW = head.findIndex(h => RX_W.test(h));
+  if (iNo >= 0 && iK >= 0) {   // format daftar: no | kunci | bobot
+    const items = rows.slice(1).filter(r => (r[iNo] || "").trim() && (r[iK] || "").trim())
+      .map(r => { const n = String(r[iNo]).trim().replace(/\.$/, ""); return { n, label: "S" + n, alts: splitAlts(r[iK]), w: iW >= 0 ? (num(r[iW]) || 1) : 1 }; });
+    if (!items.length) throw new Error("Tidak ada kunci jawaban yang terisi.");
+    return { mode: "list", items };
+  }
+  if (rows.length < 2) throw new Error("Format tidak dikenali. Gunakan kolom 'no' dan 'kunci' (lihat template).");
+  const key = rows[1], items = [];   // format baris: judul kolom = soal, baris ke-2 = kunci
+  rows[0].forEach((h, i) => {
+    const hn = normH(h); if (!hn || isIdCol(hn) || !(key[i] || "").trim()) return;
+    items.push({ n: String(items.length + 1), head: hn, label: "S" + (items.length + 1), title: h.trim(), alts: splitAlts(key[i]), w: 1 });
+  });
+  if (!items.length) throw new Error("Tidak ada kunci jawaban yang terbaca.");
+  return { mode: "row", items };
+}
+
+function studentsFromFile(rows, fname) {
+  const base = fname.replace(/\.[^.]+$/, "");
+  const idFromName = () => { const m = base.match(/^(\d{5,})[\s_-]+(.+)$/); return m ? { nim: m[1], nama: m[2].replace(/[_]+/g, " ").trim() } : { nim: "", nama: base }; };
+  if (!rows.length) return { list: [], missing: [] };
+  const head = rows[0].map(normH);
+  const iNo = head.findIndex(h => RX_NO.test(h)), iJ = head.findIndex(h => RX_ANS.test(h));
+  if (iNo >= 0 && iJ >= 0) {   // satu file = satu mahasiswa (kolom no | jawaban)
+    const map = {}; rows.slice(1).forEach(r => { map[String(r[iNo] || "").trim().replace(/\.$/, "")] = r[iJ]; });
+    const missing = KEY.items.filter(it => !(it.n in map)).map(it => it.label);
+    return { list: [{ ...idFromName(), kelas: "", file: fname, answers: KEY.items.map(it => map[it.n] ?? "") }], missing };
+  }
+  const cols = KEY.items.map(it => {
+    let c = it.head ? head.indexOf(it.head) : -1;
+    if (c < 0) c = head.findIndex(h => !isIdCol(h) && colMatchesNo(h, it.n));
+    return c;
+  });
+  const missing = KEY.items.filter((_, i) => cols[i] < 0).map(it => it.label);
+  const iNim = head.findIndex(h => RX_NIM.test(h)), iNama = head.findIndex(h => RX_NAMA.test(h)), iKelas = head.findIndex(h => RX_KELAS.test(h));
+  const data = rows.slice(1);
+  const list = data.map((r, k) => {
+    const fb = data.length === 1 ? idFromName() : { nim: "", nama: `${base} #${k + 1}` };
+    return {
+      nim: iNim >= 0 ? (r[iNim] || "").trim() : fb.nim,
+      nama: iNama >= 0 ? (r[iNama] || "").trim() : fb.nama,
+      kelas: iKelas >= 0 ? (r[iKelas] || "").trim() : "",
+      file: fname, answers: cols.map(c => c >= 0 ? r[c] : "")
+    };
+  }).filter(s => s.nama || s.nim);
+  return { list, missing };
+}
+
+function isMatch(a, alts, pg) {
+  return alts.some(k => {
+    const kl = pg ? (/^[A-Z]$/.test(k) ? k : (k.match(/^\(?([A-Z])[.)]\s/) || [])[1]) : null;
+    if (kl) {
+      const m = a.replace(/^[(\[]/, "").match(/^([A-Z])(?=$|[\s.)\]:,-])/);
+      return !!m && m[1] === kl;
+    }
+    if (a === k) return true;
+    const isN = s => /^-?\d+([.,]\d+)?$/.test(s);
+    return isN(a) && isN(k) && num(a) === num(k);
+  });
+}
+
+/* ---------- Mode esai: pedoman penskoran (rubrik) ---------- */
+const STOP = new Set(("yang dan di ke dari untuk dengan dalam pada serta sebagai adalah ini itu oleh atau sehingga masih perlu telah akan dapat lebih " +
+  "secara yaitu seperti khususnya memiliki adanya dibuktikan terlihat menyebabkan belum sudah bisa juga karena agar tersebut para bagi antara " +
+  "maupun merupakan hanya namun bukan satu satunya sangat memang meliputi baik semua seluruh setiap tiap hal mampu mahasiswa perusahaan kita " +
+  "kami saya ada tidak jika maka sebuah suatu berbagai the of and to in is are for").split(" "));
+function stem(w) {
+  w = w.replace(/(nya|lah|kah|pun)$/, "");
+  if (w.length > 6) w = w.replace(/(kan|an|i)$/, "");
+  const p = w.match(/^(meng|meny|mem|men|me|peng|peny|pem|pen|pe|ber|be|ter|di|ke|se)(.+)$/);
+  if (p && p[2].length >= 4) w = p[2];
+  return w;
+}
+function toks(text) {
+  const t = String(text || "").toLowerCase().replace(/sumber daya manusia/g, "sdm").replace(/['’]/g, "");
+  return t.split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOP.has(w)).map(stem).filter(w => w.length >= 3);
+}
+const ownText = el => { const c = el.cloneNode(true); c.querySelectorAll("ul,ol,table").forEach(x => x.remove()); return c.textContent.replace(/\s+/g, " ").trim(); };
+const isBold = el => { const t = ownText(el); const b = [...el.querySelectorAll(":scope > strong, :scope > b")].map(x => x.textContent).join("").replace(/\s+/g, " ").trim(); return !!t && b === t; };
+const RX_HDR = /^(no|nomor|dampak|pengaruh|peran kepemimpinan|kekuatan \(strengths\)|kelemahan \(weaknesses\)|kekuatan|kelemahan|peluang|ancaman|aspek|keterangan)$/i;
+
+function parseRubric(html, text) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  for (const tb of doc.querySelectorAll("table")) {
+    const rows = [...tb.rows]; if (rows.length < 2) continue;
+    const head = [...rows[0].cells].map(c => normH(c.textContent));
+    const iB = head.findIndex(h => /^(butir|no|nomor|soal)/.test(h));
+    let iS = head.findIndex(h => /^(skor|bobot|nilai|poin)\b/.test(h));
+    if (iS < 0) iS = head.findIndex(h => /\b(skor|bobot|poin)\b/.test(h));
+    let iA = head.findIndex((h, i) => i !== iB && i !== iS && /aspek|konsep|kriteria|rubrik|indikator|uraian|pedoman|deskripsi/.test(h));
+    if (iA < 0) {   // kolom "kunci/jawaban" dianggap rubrik esai hanya jika isinya berupa uraian panjang
+      const iK = head.findIndex((h, i) => i !== iB && i !== iS && /kunci|jawaban/.test(h));
+      if (iK >= 0) {
+        const lens = rows.slice(1).map(r => (r.cells[iK]?.textContent || "").trim().split(/\s+/).filter(Boolean).length);
+        if (lens.reduce((a, c) => a + c, 0) / (lens.length || 1) > 6) iA = iK;
+      }
+    }
+    if (iB < 0 || iS < 0 || iA < 0) continue;
+    const items = [];
+    for (const r of rows.slice(1)) {
+      const c = r.cells; if (c.length <= Math.max(iB, iS, iA)) continue;
+      const nb = c[iB].textContent.trim().match(/^(\d+)/); if (!nb) continue;
+      const sp = [...c[iS].querySelectorAll("p")].map(ownText).find(t => /^\d+([.,]\d+)?$/.test(t)) || (c[iS].textContent.match(/\d+(?:[.,]\d+)?/) || [])[0];
+      const max = num(sp); if (!max) continue;
+      let title = "", cat = ""; const concepts = [];
+      [...c[iA].querySelectorAll("p,li")].forEach(el => {
+        const b = ownText(el); if (!b) return;
+        if (!title && /^(mahasiswa\s+(mampu|dapat)|mampu\s)/i.test(b)) { title = b; return; }
+        if (/^hal\.?\s*\d/i.test(b) || /^\d+\.?$/.test(b) || RX_HDR.test(b)) return;
+        const long = b.split(/\s+/).length > 12;
+        if (!long && (b.endsWith(":") || isBold(el))) { cat = b.replace(/:$/, ""); return; }
+        const parts = long ? b.split(/(?<=[.:])\s+/) : [b];
+        parts.forEach((p, pi) => {
+          if (pi === parts.length - 1 && p.endsWith(":") && p.split(/\s+/).length <= 8) { cat = p.replace(/:$/, ""); return; }
+          p = p.replace(/:$/, "").trim(); const tk = [...new Set(toks(p))];
+          if (tk.length && !concepts.some(x => x.text === p)) concepts.push({ text: p, cat, tk });
+        });
+      });
+      items.push({ n: nb[1], label: "Butir " + nb[1], title: title || "Butir " + nb[1], max, concepts });
+    }
+    if (items.length) {
+      const g = re => { const m = String(text || "").match(re); return m ? num(m[1]) : null; };
+      const bahasa = g(/skor\s+penggunaan\s+bahasa\s*[:=]?\s*(\d+)/i) ?? 0;
+      const total = items.reduce((a, it) => a + it.max, 0);
+      const porsi = g(/skor\s+maksimal\s*[:=]?\s*(\d+)/i) ?? (bahasa ? 100 - bahasa : total);
+      return { mode: "rubrik", items, bahasa, porsi, total };
+    }
+  }
+  return null;
+}
+
+function splitButir(text, nums) {
+  const RX = /^\s*(?:jawaban\s+)?(?:soal|nomor|no\.?|butir|pertanyaan)\s*(?:ke\s*-?\s*)?(\d{1,2})\b[\s.):\-]*/i;
+  const sec = {}; let cur = null, hits = 0;
+  for (const ln of String(text || "").split(/\r?\n/)) {
+    const m = ln.match(RX);
+    if (m && nums.includes(String(+m[1])) && !(String(+m[1]) in sec)) { cur = String(+m[1]); sec[cur] = ln.slice(m[0].length); hits++; continue; }
+    if (cur) sec[cur] += "\n" + ln;
+  }
+  if (hits >= 2) return sec;
+  // Cadangan: penomoran biasa "1." / "2)" di awal baris — hanya jika tiap nomor muncul sekali
+  // (nomor berulang menandakan daftar di dalam jawaban, jadi tidak dipakai)
+  const lines = String(text || "").split(/\r?\n/), RN = /^\s*(\d{1,2})\s*[.)]\s+/;
+  const seen = lines.map(l => (l.match(RN) || [])[1]).filter(Boolean).map(x => String(+x));
+  const inKey = seen.filter(x => nums.includes(x));
+  if (inKey.length < 2 || new Set(seen).size !== seen.length || seen.some(x => !nums.includes(x))) return null;
+  for (let i = 1; i < inKey.length; i++) if (+inKey[i] <= +inKey[i - 1]) return null;
+  const sec2 = {}; cur = null;
+  for (const ln of lines) {
+    const m = ln.match(RN);
+    if (m) { cur = String(+m[1]); sec2[cur] = ln.slice(m[0].length); continue; }
+    if (cur) sec2[cur] += "\n" + ln;
+  }
+  return sec2;
+}
+
+function studentsEssay(d) {
+  if (d.rows) return studentsFromFile(d.rows, d.name);   // spreadsheet: satu kolom per butir
+  const text = d.text || ""; if (!text.trim()) return { list: [], missing: [] };
+  const p = parseTextDoc(text), fb = idFromName(d.name), sec = splitButir(text, KEY.items.map(it => it.n));
+  return {
+    list: [{ nim: p.nim || fb.nim, nama: p.nama || fb.nama, kelas: p.kelas || "", file: d.name, whole: !sec,
+      answers: KEY.items.map(it => sec ? (sec[it.n] || "") : text) }],
+    missing: sec ? KEY.items.filter(it => !String(sec[it.n] || "").trim()).map(it => it.label) : []
+  };
+}
+
+function scoreEssay(answer, it, target) {
+  const st = toks(answer), set = new Set(st);
+  const has = t => set.has(t) || st.some(s => s.length >= 5 && t.length >= 5 && (s.startsWith(t) || t.startsWith(s)));
+  let credit = 0;
+  const cs = it.concepts.map(c => {
+    const f = c.tk.filter(has).length / c.tk.length, cr = f >= 0.6 ? 1 : f >= 0.34 ? 0.5 : 0;
+    credit += cr; return { text: c.text, cat: c.cat, f, cr };
+  });
+  const auto = st.length < 5 || !it.concepts.length ? 0 : Math.round(it.max * Math.min(1, credit / (it.concepts.length * target)));
+  return { cs, auto };
+}
+
+let OVR = {};   // penyesuaian manual dosen: { "file|nama": { s: {j: skor}, b: bahasa } }
+const ovKey = r => r.file + "|" + r.nama;
+function scoreStudentEssay(r) {
+  const target = Math.max(10, Math.min(100, +$("#optTarget").value || 60)) / 100, ov = OVR[ovKey(r)] || { s: {} };
+  r.detail = KEY.items.map((it, j) => {
+    const s = scoreEssay(r.answers[j], it, target);
+    return { label: it.label, title: it.title, max: it.max, cs: s.cs, auto: s.auto, skor: ov.s[j] ?? s.auto, manual: j in ov.s,
+      excerpt: String(r.answers[j] || "").trim() };
+  });
+  r.bahasa = ov.b ?? Math.min(KEY.bahasa, Math.max(0, +$("#optBahasa").value || 0));
+  calcEssay(r);
+}
+function calcEssay(r) {
+  r.jawab = r.detail.reduce((a, d) => a + (+d.skor || 0), 0);
+  r.skor = r.jawab / (KEY.total || 1) * KEY.porsi + (KEY.bahasa ? (+r.bahasa || 0) : 0);
+  r.pct = r.skor / ((KEY.porsi + KEY.bahasa) || 100) * 100;
+}
+function scoreStudentPG(r) {
+  const pg = $("#optPG").checked, max = +$("#optMax").value || 100, totW = KEY.items.reduce((a, it) => a + it.w, 0) || 1;
+  let benar = 0, salah = 0, kosong = 0, got = 0;
+  r.detail = KEY.items.map((it, j) => {
+    const a = normAns(r.answers[j]); let st;
+    if (!a) { kosong++; st = "kosong"; }
+    else if (isMatch(a, it.alts, pg)) { benar++; got += it.w; st = "benar"; }
+    else { salah++; st = "salah"; }
+    return { label: it.label, title: it.title || it.label, jawab: a, kunci: it.alts.join(" / "), st };
+  });
+  Object.assign(r, { benar, salah, kosong, skor: got / totW * max, pct: got / totW * 100 });
+}
+
+function runGrade() {
+  $("#applyStatus").textContent = "";
+  if (!KEY) { setStatus("#keyStatus", "Unggah kunci jawaban / pedoman penskoran terlebih dahulu.", "err"); return; }
+  if (!ANSFILES.length) { setStatus("#ansStatus", "Unggah file jawaban mahasiswa terlebih dahulu.", "err"); return; }
+  const essay = KEY.mode === "rubrik", warn = [], students = [];
+  ANSFILES.forEach(f => {
+    const { list, missing } = essay ? studentsEssay(f) : studentsFromDoc(f);
+    if (!list.length) warn.push(essay ? `${f.name}: tidak ada teks jawaban yang terbaca.` : `${f.name}: tidak ditemukan jawaban (pastikan ada pola seperti "1. A" atau tabel No | Jawaban).`);
+    if (missing.length) warn.push(`${f.name}: ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? "…" : ""} tidak ditemukan/tidak dijawab (dianggap kosong).`);
+    students.push(...list);
+  });
+  KRES = students.map((s, i) => ({ no: i + 1, ...s }));
+  KRES.forEach(essay ? scoreStudentEssay : scoreStudentPG);
+  const whole = KRES.filter(r => r.whole).length;
+  if (essay && whole) warn.push(`${whole} jawaban tidak memakai penanda "Soal 1 / Nomor 1 / Butir 1", sehingga tiap butir dicocokkan dengan seluruh isi jawaban — periksa skornya.`);
+  $("#ansStatus").className = "fstatus " + (warn.length ? "" : "ok");
+  $("#ansStatus").innerHTML = `✔ ${ANSFILES.length} file · ${KRES.length} mahasiswa dinilai.` + (warn.length ? `<ul>${warn.map(w => `<li>${esc(w)}</li>`).join("")}</ul>` : "");
+  $("#gradeOut").classList.remove("hide");
+  fillTarget(); renderK();
+}
+
+const kVal = (m, k) => /^b\d+$/.test(k) ? +m.detail[+k.slice(1)].skor : m[k];
+function renderK() {
+  const essay = KEY.mode === "rubrik", max = +$("#optMax").value || 100, q = $("#kq").value.trim().toLowerCase();
+  const list = KRES.filter(m => !q || m.nama.toLowerCase().includes(q) || m.nim.toLowerCase().includes(q))
+    .sort((a, b) => { const x = kVal(a, kSortKey), y = kVal(b, kSortKey); return (typeof x === "string" ? x.localeCompare(y, "id") : x - y) * kSortDir; });
+  const all = KRES, n = all.length || 1, skor = all.map(m => m.skor);
+  const tuntas = all.filter(m => m.pct >= CONFIG.batasLulus).length;
+  const scale = essay ? KEY.porsi + KEY.bahasa : max;
+  $("#kCards").innerHTML = [
+    ["pri", "Mahasiswa Dinilai", all.length, essay ? `${KEY.items.length} butir esai` : `${KEY.items.length} soal`],
+    ["", "Rata-rata Nilai", fmt(skor.reduce((a, c) => a + c, 0) / n), `skala 0–${scale}`],
+    ["ok", "Tertinggi", fmt(all.length ? Math.max(...skor) : 0), ""],
+    ["bad", "Terendah", fmt(all.length ? Math.min(...skor) : 0), ""],
+    ["ok", "Tuntas", tuntas, `nilai ≥ ${CONFIG.batasLulus} (skala 100)`]
+  ].map(([c, l, v, h]) => `<div class="card ${c}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
+
+  const cols = essay
+    ? [["no", "No"], ["nim", "NIM"], ["nama", "Nama"], ...KEY.items.map((it, j) => [`b${j}`, `${it.n} (/${fmt(it.max)})`, 1]),
+       ...(KEY.bahasa ? [["bahasa", `Bahasa (/${KEY.bahasa})`, 1]] : []), ["skor", "Nilai", 1], ["file", "Sumber File"]]
+    : [["no", "No"], ["nim", "NIM"], ["nama", "Nama"], ["benar", "Benar", 1], ["salah", "Salah", 1], ["kosong", "Kosong", 1], ["skor", "Nilai", 1], ["file", "Sumber File"]];
+  $("#kHead").innerHTML = "<tr>" + cols.map(([k, l, nm]) => `<th data-k="${k}"${nm ? ' class="num"' : ""}>${esc(l)}${k === kSortKey ? (kSortDir === 1 ? " ▲" : " ▼") : ""}</th>`).join("") + "</tr>";
+  $("#kBody").innerHTML = list.length ? list.map(m => {
+    const badge = `<span class="badge ${m.pct >= CONFIG.batasLulus ? "b-ok" : "b-bad"}">${fmt(m.skor)}</span>`;
+    const mid = essay
+      ? m.detail.map(d => `<td class="num">${fmt(d.skor)}${d.manual ? "✎" : ""}</td>`).join("") + (KEY.bahasa ? `<td class="num">${fmt(m.bahasa)}</td>` : "")
+      : `<td class="num">${m.benar}</td><td class="num">${m.salah}</td><td class="num">${m.kosong}</td>`;
+    return `<tr data-no="${m.no}"><td>${m.no}</td><td>${esc(m.nim) || "–"}</td><td><b>${esc(m.nama)}</b>${m.whole ? ' <span class="badge b-warn" title="Tanpa penanda butir">cek</span>' : ""}</td>${mid}<td class="num">${badge}</td><td class="legend">${esc(m.file)}</td></tr>`;
+  }).join("") : `<tr><td colspan="${cols.length}" class="empty">Tidak ada data yang cocok.</td></tr>`;
+
+  const pct = essay
+    ? KEY.items.map((it, j) => all.reduce((a, m) => a + (+m.detail[j].skor || 0) / it.max * 100, 0) / n)
+    : KEY.items.map((_, j) => all.filter(m => m.detail[j].st === "benar").length / n * 100);
+  const color = p => p >= 70 ? css("--ok") : p >= 40 ? css("--primary") : css("--bad");
+  charts.k?.destroy();
+  charts.k = new Chart($("#chartItem"), {
+    type: "bar",
+    data: { labels: KEY.items.map(it => it.label), datasets: [{ data: pct, backgroundColor: pct.map(color), borderRadius: 6 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { title: c => KEY.items[c[0].dataIndex].title || c[0].label,
+          label: c => essay ? `rata-rata capaian ${fmt(c.raw)}% dari skor maksimal` : `${fmt(c.raw)}% benar · kunci: ${KEY.items[c.dataIndex].alts.join(" / ")}` } } },
+      scales: { y: { min: 0, max: 100, grid: { color: css("--line") } }, x: { grid: { display: false } } } }
+  });
+  $("#chartTitle").textContent = essay ? "Rata-rata capaian per butir (% dari skor maksimal)" : "Analisis Butir Soal — persentase mahasiswa yang menjawab benar";
+  const sulit = KEY.items.filter((_, j) => pct[j] < 40).map(it => it.label);
+  const mudah = KEY.items.filter((_, j) => pct[j] >= 80).map(it => it.label);
+  $("#itemNote").innerHTML = essay
+    ? `Skor esai adalah <b>saran otomatis</b> berdasarkan kemunculan poin-poin kunci dari pedoman penskoran. Klik nama mahasiswa untuk memeriksa jawabannya dan menyesuaikan skor (tanda ✎ = sudah disesuaikan). ` +
+      (sulit.length ? `<b>Capaian rendah:</b> ${sulit.join(", ")}.` : "")
+    : `Hijau = mudah (≥70% benar), biru = sedang, merah = sulit (<40%). ` +
+      (sulit.length ? `<b>Soal sulit:</b> ${sulit.join(", ")} — periksa kembali kunci atau pembahasannya. ` : "") +
+      (mudah.length ? `<b>Soal sangat mudah (≥80%):</b> ${mudah.join(", ")}.` : "");
+}
+
+function openK(no) {
+  const m = KRES.find(x => x.no === +no); if (!m) return;
+  $("#mNama").textContent = m.nama;
+  $("#mSub").textContent = `${m.nim ? "NIM " + m.nim + " · " : ""}${m.file}`;
+  if (KEY.mode !== "rubrik") {
+    $("#mBody").innerHTML = `
+      <div class="kv">
+        <div><span>Nilai</span><b>${fmt(m.skor)}</b></div>
+        <div><span>Benar</span><b>${m.benar}</b></div>
+        <div><span>Salah / Kosong</span><b>${m.salah} / ${m.kosong}</b></div>
+      </div>
+      <b>Jawaban per soal</b> <span class="legend">(hijau benar, merah salah → kunci, abu-abu kosong)</span>
+      <div class="ans">${m.detail.map(d => `<div class="${d.st === "benar" ? "pH" : d.st === "salah" ? "pA" : "pX"}" title="${esc(d.title)} — kunci: ${esc(d.kunci)}">${esc(d.label)}<small>${esc(d.jawab || "–")}${d.st === "salah" ? " → " + esc(d.kunci) : ""}</small></div>`).join("")}</div>`;
+    $("#modal").showModal(); return;
+  }
+  const ic = cr => cr === 1 ? '<span class="ck ok">✓</span>' : cr > 0 ? '<span class="ck half">◐</span>' : '<span class="ck no">✗</span>';
+  $("#mBody").innerHTML = `
+    <div class="kv">
+      <div><span>Nilai Akhir</span><b id="eNilai">${fmt(m.skor)}</b></div>
+      <div><span>Skor Jawaban</span><b id="eJawab">${fmt(m.jawab)} / ${fmt(KEY.total)}</b></div>
+      ${KEY.bahasa ? `<div><span>Skor Bahasa (maks ${KEY.bahasa})</span><b><input type="number" class="ov" id="eBahasa" min="0" max="${KEY.bahasa}" step="0.5" value="${m.bahasa}"></b></div>` : ""}
+    </div>
+    ${m.whole ? `<p class="fstatus" style="color:var(--warn)">⚠ Jawaban ini tidak memakai penanda "Soal 1 / Nomor 1", jadi setiap butir dicocokkan dengan seluruh isi jawaban. Periksa skornya.</p>` : ""}
+    ${m.detail.map((d, j) => `
+      <div class="butir">
+        <div class="bhead"><b>${esc(d.label)}</b>
+          <label>Skor <input type="number" class="ov" data-j="${j}" min="0" max="${d.max}" step="0.5" value="${d.skor}"> / ${fmt(d.max)}</label>
+          <span class="legend">saran otomatis: ${fmt(d.auto)}</span></div>
+        <div class="legend">${esc(d.title)}</div>
+        <ul class="concepts">${d.cs.map(c => `<li>${ic(c.cr)} ${c.cat ? `<i>${esc(c.cat)}:</i> ` : ""}${esc(c.text)}</li>`).join("") || "<li>Tidak ada poin kunci yang terbaca — nilai manual.</li>"}</ul>
+        <details><summary>Lihat jawaban mahasiswa${m.whole ? " (seluruh dokumen)" : ""}</summary><div class="excerpt">${esc(d.excerpt || "(kosong)")}</div></details>
+      </div>`).join("")}
+    <p class="legend">✓ poin kunci ditemukan · ◐ sebagian · ✗ tidak ditemukan. Perubahan skor langsung tersimpan di tabel (selama halaman belum ditutup).</p>`;
+  $("#mBody").querySelectorAll("input.ov").forEach(inp => inp.addEventListener("input", () => {
+    const o = OVR[ovKey(m)] ||= { s: {} };
+    if (inp.id === "eBahasa") { m.bahasa = o.b = Math.max(0, Math.min(KEY.bahasa, +inp.value || 0)); }
+    else { const j = +inp.dataset.j, d = m.detail[j]; d.skor = o.s[j] = Math.max(0, Math.min(d.max, +inp.value || 0)); d.manual = true; }
+    calcEssay(m); $("#eNilai").textContent = fmt(m.skor); $("#eJawab").textContent = `${fmt(m.jawab)} / ${fmt(KEY.total)}`;
+    renderK();
+  }));
+  $("#modal").showModal();
+}
+
+function fillTarget() {
+  const T = Math.max(0, ...RAW.map(m => m.tugas.length));
+  const opts = [];
+  for (let i = 1; i <= T; i++) opts.push([`tugas${i}`, `Tugas ${i}`]);
+  opts.push([`tugas${T + 1}`, `Tugas ${T + 1} (kolom baru)`], ["uts", "UTS"], ["uas", "UAS"]);
+  const cur = $("#kTarget").value;
+  $("#kTarget").innerHTML = opts.map(([v, l]) => `<option value="${v}">Masukkan ke: ${l}</option>`).join("");
+  if (opts.some(o => o[0] === cur)) $("#kTarget").value = cur; else $("#kTarget").value = `tugas${T + 1}`;
+}
+
+function applyToDashboard() {
+  if (!KRES.length) return;
+  const tgt = $("#kTarget").value;
+  const label = $("#kTarget").selectedOptions[0].textContent.replace("Masukkan ke: ", "");
+  const nn = s => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const idx = tgt.startsWith("tugas") ? +tgt.slice(5) - 1 : -1;
+  if (idx >= 0) RAW.forEach(m => { while (m.tugas.length <= idx) m.tugas.push(null); });
+  let ok = 0; const miss = [];
+  KRES.forEach(r => {
+    const m = (r.nim && RAW.find(x => x.nim === r.nim)) || RAW.find(x => nn(x.nama) === nn(r.nama));
+    if (!m) { miss.push(r.nama || r.nim); return; }
+    const v = Math.round(r.pct * 10) / 10;   // skala 100
+    if (idx >= 0) m.tugas[idx] = v; else m[tgt] = v;
+    ok++;
+  });
+  recompute(); fillTarget();
+  $("#applyStatus").className = "fstatus " + (miss.length ? "" : "ok");
+  $("#applyStatus").innerHTML = `✔ ${ok} nilai (skala 100) dimasukkan ke kolom <b>${esc(label)}</b> di Dashboard. ` +
+    `Klik <b>💾 Unduh Data</b> lalu unggah file <code>mahasiswa.csv</code> ke folder <code>data</code> di GitHub agar tersimpan permanen.` +
+    (miss.length ? `<ul><li>Tidak ditemukan di data dashboard (cek NIM/nama): ${miss.map(esc).join(", ")}</li></ul>` : "");
+}
+
+function exportK() {
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  if (KEY.mode === "rubrik") {
+    const head = ["NIM", "Nama", "Kelas", "File", ...KEY.items.map(it => `${it.label} (maks ${it.max})`), "Skor Jawaban", ...(KEY.bahasa ? [`Bahasa (maks ${KEY.bahasa})`] : []), "Nilai Akhir"];
+    const rows = KRES.map(m => [m.nim, m.nama, m.kelas, m.file, ...m.detail.map(d => fmt(d.skor)), fmt(m.jawab), ...(KEY.bahasa ? [fmt(m.bahasa)] : []), fmt(m.skor)].map(q).join(";"));
+    download("hasil-penilaian-esai.csv", [head.map(q).join(";"), ...rows].join("\n")); return;
+  }
+  const head = ["NIM", "Nama", "Kelas", "File", "Benar", "Salah", "Kosong", "Nilai", ...KEY.items.map(it => it.label)];
+  const rows = KRES.map(m => [m.nim, m.nama, m.kelas, m.file, m.benar, m.salah, m.kosong, fmt(m.skor),
+    ...m.detail.map(d => (d.jawab || "-") + (d.st === "benar" ? " (B)" : d.st === "salah" ? " (S)" : ""))].map(q).join(";"));
+  const keyRow = ["", "KUNCI", "", "", "", "", "", "", ...KEY.items.map(it => it.alts.join("/"))].map(q).join(";");
+  download("hasil-koreksi.csv", [head.map(q).join(";"), keyRow, ...rows].join("\n"));
+}
+
+function exportData() {
+  if (!RAW.length) return;
+  const T = Math.max(0, ...RAW.map(m => m.tugas.length));
+  const P = RAW[0].presLabel.map(l => l.toLowerCase());
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const head = ["nim", "nama", "kelas", ...P, ...Array.from({ length: T }, (_, i) => `tugas${i + 1}`), "uts", "uas"];
+  const rows = RAW.map(m => [m.nim, m.nama, m.kelas, ...P.map((_, i) => m.pres[i] || ""),
+    ...Array.from({ length: T }, (_, i) => m.tugas[i] ?? ""), m.uts ?? "", m.uas ?? ""].map(q).join(","));
+  download("mahasiswa.csv", [head.join(","), ...rows].join("\n"));
+}
+
+function download(name, text) {
+  const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function setStatus(sel, html, cls) { const el = $(sel); el.className = "fstatus " + (cls || ""); el.innerHTML = html; }
+
+function setModeUI() {
+  const essay = KEY && KEY.mode === "rubrik";
+  $("#pgOpts").classList.toggle("hide", !!essay);
+  $("#essayOpts").classList.toggle("hide", !essay);
+  if (essay) { $("#optBahasa").max = KEY.bahasa; $("#bahasaWrap").classList.toggle("hide", !KEY.bahasa); }
+}
+async function handleKey(files) {
+  const f = files[0]; if (!f) return;
+  try {
+    setStatus("#keyStatus", `⏳ Membaca <b>${esc(f.name)}</b>…`);
+    KEY = keyFromDoc(await readAny(f)); OVR = {};
+    if (KEY.mode === "rubrik") {
+      const nc = KEY.items.reduce((a, it) => a + it.concepts.length, 0);
+      setStatus("#keyStatus", `✔ <b>${esc(f.name)}</b> — <b>pedoman penskoran esai</b>: ${KEY.items.length} butir (skor ${KEY.items.map(it => fmt(it.max)).join(", ")}), ${nc} poin kunci.<br>
+        <span class="legend">Nilai akhir = skor jawaban ÷ ${fmt(KEY.total)} × ${fmt(KEY.porsi)}${KEY.bahasa ? ` + skor bahasa (maks ${KEY.bahasa})` : ""}.</span>
+        <details><summary>Lihat poin kunci yang terbaca</summary>${KEY.items.map(it => `<p><b>${esc(it.label)}</b> (maks ${fmt(it.max)})</p><ul class="concepts">${it.concepts.map(c => `<li>${c.cat ? `<i>${esc(c.cat)}:</i> ` : ""}${esc(c.text)}</li>`).join("")}</ul>`).join("")}</details>`, "ok");
+    } else {
+      const tw = KEY.items.reduce((a, it) => a + it.w, 0);
+      setStatus("#keyStatus", `✔ <b>${esc(f.name)}</b> — ${KEY.items.length} soal (total bobot ${fmt(tw)}).<br><span class="legend">Terbaca: ${KEY.items.slice(0, 12).map(it => `${esc(it.n)}=${esc(it.alts.join("/"))}`).join(", ")}${KEY.items.length > 12 ? ", …" : ""}</span>`, "ok");
+    }
+    setModeUI(); kSortKey = "no"; kSortDir = 1;
+    if (ANSFILES.length) runGrade();
+  } catch (e) { KEY = null; setModeUI(); setStatus("#keyStatus", "✖ " + esc(e.message), "err"); }
+}
+async function handleAns(files) {
+  const arr = [...files]; if (!arr.length) return;
+  const out = [], err = [];
+  setStatus("#ansStatus", `⏳ Membaca ${arr.length} file…`);
+  for (const f of arr) { try { out.push(await readAny(f)); } catch (e) { err.push(`${f.name}: ${e.message}`); } }
+  ANSFILES = out;
+  setStatus("#ansStatus", `✔ ${out.length} file dimuat.` + (err.length ? `<ul>${err.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""), out.length ? "ok" : "err");
+  if (KEY && out.length) runGrade();
+}
+function wireDrop(labelSel, inputSel, handler) {
+  const lb = $(labelSel), inp = $(inputSel);
+  inp.addEventListener("change", e => { handler(e.target.files); e.target.value = ""; });
+  ["dragenter", "dragover"].forEach(ev => lb.addEventListener(ev, e => { e.preventDefault(); lb.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev => lb.addEventListener(ev, e => { e.preventDefault(); lb.classList.remove("over"); }));
+  lb.addEventListener("drop", e => handler(e.dataTransfer.files));
+}
+wireDrop("#dropKey", "#keyInput", handleKey);
+wireDrop("#dropAns", "#ansInput", handleAns);
+$("#btnGrade").addEventListener("click", runGrade);
+["#optPG", "#optMax", "#optTarget", "#optBahasa"].forEach(s => $(s).addEventListener("change", () => KRES.length && runGrade()));
+$("#kq").addEventListener("input", renderK);
+$("#kTable").addEventListener("click", e => {
+  const th = e.target.closest("th"); if (!th) return; const k = th.dataset.k;
+  if (kSortKey === k) kSortDir *= -1; else { kSortKey = k; kSortDir = th.classList.contains("num") ? -1 : 1; }
+  renderK();
+});
+$("#kBody").addEventListener("click", e => { const tr = e.target.closest("tr[data-no]"); if (tr) openK(tr.dataset.no); });
+$("#btnApply").addEventListener("click", applyToDashboard);
+$("#btnKExport").addEventListener("click", exportK);
+$("#btnDownloadData").addEventListener("click", exportData);
+$("#tplKey").addEventListener("click", () => download("template-kunci-jawaban.csv",
+  "no,kunci,bobot\n1,A,1\n2,C,1\n3,B,1\n4,D,1\n5,A,1\n6,E,1\n7,B,1\n8,C,1\n9,elastis,1\n10,harga penetrasi|penetration pricing,2"));
+$("#tplAns").addEventListener("click", () => download("template-jawaban-mahasiswa.csv",
+  "nim,nama,kelas,1,2,3,4,5,6,7,8,9,10\n2023010001,Adi Pratama,A,A,C,B,D,A,E,B,C,elastis,harga penetrasi\n2023010002,Bunga Lestari,A,A,C,B,D,A,E,A,C,Elastis,penetration pricing\n2023010003,Cahya Nugraha,A,B,C,A,D,,E,B,D,inelastis,harga skimming"));
+$("#tplAns1").addEventListener("click", () => download("2023010001_Adi Pratama.csv",
+  "no,jawaban\n1,A\n2,C\n3,B\n4,D\n5,A\n6,E\n7,B\n8,C\n9,elastis\n10,harga penetrasi"));
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x === b));
+  $("#tab-dash").classList.toggle("hide", b.dataset.tab !== "dash");
+  $("#tab-koreksi").classList.toggle("hide", b.dataset.tab !== "koreksi");
+  if (b.dataset.tab === "dash") render(); else { fillTarget(); if (KRES.length) renderK(); }
+}));
+
+// ===== Mulai =====
+$("#judul").textContent = CONFIG.judul;
+$("#subjudul").textContent = `${CONFIG.mataKuliah} · ${CONFIG.semester} · ${CONFIG.dosen}`;
+$("#updated").textContent = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+syncSettings();
+fetch(CONFIG.dataUrl, { cache: "no-store" })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+  .then(t => loadRows(parseCSV(t)))
+  .catch(() => {
+    loadRows(parseCSV($("#sampleData").textContent.trim()));
+    showNotice("File <code>data/mahasiswa.csv</code> tidak terbaca (biasanya karena file dibuka langsung dari komputer). Menampilkan <b>data contoh</b>. Gunakan tombol <b>Unggah CSV</b>, atau buka lewat GitHub Pages.");
+  });
+</script>
+</body>
+</html>
