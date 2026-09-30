@@ -50,6 +50,28 @@ Buka `index.html`, cari bagian `CONFIG` di dekat bagian bawah:
 
 Tombol **Pengaturan** di dashboard bisa dipakai untuk mencoba bobot lain secara sementara.
 
+## Koreksi Otomatis (tab ✅ Koreksi Otomatis)
+
+1. **Unggah kunci jawaban** — CSV, Excel, **Word (.docx)**, atau **PDF**.
+   - CSV/Excel/tabel Word: kolom `no`, `kunci`, dan (opsional) `bobot`.
+   - Teks Word/PDF: tulis per nomor, mis. `1. A`, `2. C`, … Bobot boleh ditulis `10. harga penetrasi (bobot 2)`.
+   - Beberapa jawaban benar dipisah `|` atau ` / `, mis. `harga penetrasi / penetration pricing`.
+   - Soal yang kuncinya dikosongkan (mis. esai) tidak ikut dinilai.
+2. **Unggah jawaban mahasiswa** — boleh banyak file sekaligus, format campuran pun bisa:
+   - **Satu file semua mahasiswa** (CSV/Excel): kolom `nim`, `nama`, lalu kolom soal `1`, `2`, `3`… Hasil ekspor **Google Form** langsung terbaca.
+   - **Satu file per mahasiswa** (CSV/Excel/Word/PDF). Di Word/PDF, pola yang dikenali:
+     - `1. A` · `1) A` · `2 - C` · beberapa per baris `1. A  2. C  3. B`
+     - soal lengkap diikuti baris `Jawab: B`
+     - tabel `No | Jawaban`
+   - Identitas dibaca dari baris `Nama: …`, `NIM: …`, `Kelas: …`. Jika tidak ada, dari nama file `NIM_Nama.pdf` (mis. `2023010018_Siti Nurhaliza.pdf`).
+   - PDF hasil **scan/foto** dan tulisan tangan tidak bisa dibaca. File `.doc` (Word lama) harus disimpan ulang sebagai `.docx`.
+3. Nilai langsung muncul: jumlah benar/salah/kosong, nilai, analisis butir soal (soal sulit/mudah), dan detail jawaban per mahasiswa.
+4. Pilih kolom tujuan (Tugas 1–N, kolom tugas baru, UTS, UAS) → **Masukkan ke Dashboard**. Nilai dicocokkan berdasarkan NIM (atau nama).
+5. Klik **💾 Unduh Data** → unggah `mahasiswa.csv` yang baru ke folder `data` di GitHub agar tersimpan permanen.
+
+Catatan: pencocokan jawaban tidak membedakan huruf besar/kecil dan spasi. Untuk pilihan ganda, jawaban "B. Harga pokok" dianggap B. Jawaban uraian/esai bebas tetap perlu dinilai manual.
+Contoh file untuk mencoba ada di folder `contoh/`.
+
 ## Aturan status
 
 - **Berisiko** — kehadiran di bawah syarat, atau nilai akhir di bawah batas lulus.
