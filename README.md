@@ -69,6 +69,18 @@ Tombol **Pengaturan** di dashboard bisa dipakai untuk mencoba bobot lain secara 
 4. Pilih kolom tujuan (Tugas 1–N, kolom tugas baru, UTS, UAS) → **Masukkan ke Dashboard**. Nilai dicocokkan berdasarkan NIM (atau nama).
 5. Klik **💾 Unduh Data** → unggah `mahasiswa.csv` yang baru ke folder `data` di GitHub agar tersimpan permanen.
 
+### Penilaian esai dengan pedoman penskoran
+
+Unggah **pedoman penskoran Word (.docx)** sebagai kunci jawaban, yaitu dokumen dengan tabel **Butir | Aspek / Konsep yang dinilai | Skor** (format lembar pedoman penskoran tugas tutorial). Mode esai aktif otomatis:
+
+- Setiap butir dibaca beserta skor maksimalnya dan poin-poin kunci (daftar, tabel di dalam sel, dan paragraf penjelasan).
+- Baris "Skor penggunaan bahasa" dan "Skor maksimal" dibaca otomatis. Contoh: nilai akhir = skor jawaban ÷ 100 × 90 + skor bahasa (maks 10).
+- Jawaban mahasiswa (Word/PDF, satu file per mahasiswa) dipecah per butir menurut penanda **"Soal 1 / Nomor 1 / Butir 1"** atau penomoran "1.", "2." di awal baris. Jika tidak ada penanda, setiap butir dicocokkan dengan seluruh isi jawaban dan diberi tanda **cek**.
+- Skor setiap butir adalah **saran otomatis** berdasarkan seberapa banyak poin kunci yang muncul dalam jawaban. Secara bawaan, skor penuh diberikan bila ≥ 60% poin kunci terpenuhi (dapat diubah).
+- Klik nama mahasiswa untuk melihat poin kunci yang ✓ ditemukan, ◐ sebagian, atau ✗ tidak ditemukan, membaca jawabannya, **mengubah skor per butir**, dan mengisi **skor bahasa**.
+
+Keterbatasan: pencocokan berbasis kata kunci tidak bisa menilai logika atau argumen, dan tidak mendeteksi jawaban yang **menyangkal** konsep (mis. "variabel internal **adalah** faktor utama" tetap dianggap menyebut konsep itu). Karena itu skor otomatis sebaiknya diperiksa, terutama untuk nilai yang mepet.
+
 Catatan: pencocokan jawaban tidak membedakan huruf besar/kecil dan spasi. Untuk pilihan ganda, jawaban "B. Harga pokok" dianggap B. Jawaban uraian/esai bebas tetap perlu dinilai manual.
 Contoh file untuk mencoba ada di folder `contoh/`.
 
