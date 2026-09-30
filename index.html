@@ -121,6 +121,11 @@ footer{margin-top:28px;color:var(--muted);font-size:12px;text-align:center}
 .ck{display:inline-block;width:18px;font-weight:800}.ck.ok{color:var(--ok)}.ck.half{color:var(--warn)}.ck.no{color:var(--bad)}
 .excerpt{white-space:pre-wrap;font-size:13px;background:var(--bg);border-radius:8px;padding:10px;max-height:260px;overflow:auto;margin-top:6px}
 details summary{cursor:pointer;color:var(--primary);font-size:13px;font-weight:600}
+.analisis{background:var(--bg);border-radius:12px;padding:12px 14px;margin:10px 0}
+.analisis h4{margin:0 0 8px}
+.analisis ul{margin:4px 0 10px;padding-left:18px;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.analisis textarea{width:100%;font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:8px;margin:4px 0 6px;resize:vertical}
 dialog{max-width:760px}
 @media print{
   .btns,.toolbar,.settings,.notice,footer{display:none!important}
@@ -841,7 +846,8 @@ function parseRubric(html, text) {
           if (tk.length && !concepts.some(x => x.text === p)) concepts.push({ text: p, cat, tk });
         });
       });
-      items.push({ n: nb[1], label: "Butir " + nb[1], title: title || "Butir " + nb[1], max, concepts });
+      const ref = [...c[iS].querySelectorAll("p")].map(ownText).filter(t => /^hal/i.test(t)).map(t => t.replace(/^hal(aman)?\.?\s*/i, "hal. ")).join("; ");
+      items.push({ n: nb[1], label: "Butir " + nb[1], title: title || "Butir " + nb[1], max, concepts, ref });
     }
     if (items.length) {
       const g = re => { const m = String(text || "").match(re); return m ? num(m[1]) : null; };
@@ -884,7 +890,7 @@ function studentsEssay(d) {
   const text = d.text || ""; if (!text.trim()) return { list: [], missing: [] };
   const p = parseTextDoc(text), fb = idFromName(d.name), sec = splitButir(text, KEY.items.map(it => it.n));
   return {
-    list: [{ nim: p.nim || fb.nim, nama: p.nama || fb.nama, kelas: p.kelas || "", file: d.name, whole: !sec,
+    list: [{ nim: p.nim || fb.nim, nama: p.nama || fb.nama, kelas: p.kelas || "", file: d.name, whole: !sec, fullText: text,
       answers: KEY.items.map(it => sec ? (sec[it.n] || "") : text) }],
     missing: sec ? KEY.items.filter(it => !String(sec[it.n] || "").trim()).map(it => it.label) : []
   };
@@ -912,6 +918,7 @@ function scoreStudentEssay(r) {
       excerpt: String(r.answers[j] || "").trim() };
   });
   r.bahasa = ov.b ?? Math.min(KEY.bahasa, Math.max(0, +$("#optBahasa").value || 0));
+  if (ov.fb != null) { r.tanggapan = ov.fb; r.fbManual = true; }
   calcEssay(r);
 }
 function calcEssay(r) {
@@ -932,6 +939,104 @@ function scoreStudentPG(r) {
   Object.assign(r, { benar, salah, kosong, skor: got / totW * max, pct: got / totW * 100 });
 }
 
+/* ---------- Analisis, kemiripan & indikasi AI (mode esai) ---------- */
+const AI_PHRASES = ["secara keseluruhan", "dengan demikian", "penting untuk dicatat", "perlu dicatat bahwa", "di era digital", "dalam era digital",
+  "memainkan peran penting", "peran yang sangat penting", "kesimpulannya", "sebagai kesimpulan", "berikut adalah", "berikut ini adalah", "tidak hanya",
+  "tetapi juga", "hal ini menunjukkan", "lanskap", "memastikan bahwa", "secara signifikan", "berbagai aspek", "menjadi kunci", "krusial", "holistik",
+  "sinergi", "komprehensif", "dalam konteks ini", "mari kita", "semoga membantu", "model bahasa", "tentu saja", "ringkasnya", "pada akhirnya",
+  "secara efektif dan efisien", "landasan yang kuat", "fondasi yang kuat", "menavigasi", "ekosistem", "paradigma"];
+const RX_REF = /\b(modul|bmp|buku materi pokok|ekma\s?\d{4}|hal(?:aman)?\.?\s*\d|daftar pustaka|referensi|sumber\s*:|pustaka)\b/i;
+const words = t => String(t || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+function shingles(t, k = 5) { const w = words(t), s = new Set(); for (let i = 0; i + k <= w.length; i++) s.add(w.slice(i, i + k).join(" ")); return s; }
+function aiSignals(t) {
+  t = String(t || ""); const low = t.toLowerCase(), hits = AI_PHRASES.filter(p => low.includes(p));
+  const md = /\*\*[^*\n]+\*\*|^#{1,4}\s/m.test(t), dash = (t.match(/—/g) || []).length >= 3, emoji = /[\u{1F300}-\u{1FAFF}\u{2705}\u{2728}]/u.test(t);
+  const marks = hits.slice(0, 6).map(h => `"${h}"`);
+  if (md) marks.push("format markdown (**…** / #)"); if (dash) marks.push("banyak tanda —"); if (emoji) marks.push("emoji");
+  const score = hits.length + (md ? 4 : 0) + (dash ? 2 : 0) + (emoji ? 2 : 0);
+  return { level: score >= 6 ? "tinggi" : score >= 3 ? "sedang" : "rendah", marks };
+}
+const shortTxt = (t, n = 70) => t.length > n ? t.slice(0, n - 1) + "…" : t;
+
+function analyzeEssays() {
+  const sh = KRES.map(r => shingles(r.fullText));
+  // abaikan frasa umum (mis. teks soal yang disalin semua) yang muncul pada ≥ separuh mahasiswa
+  const freq = new Map(); sh.forEach(s => s.forEach(x => freq.set(x, (freq.get(x) || 0) + 1)));
+  const lim = KRES.length >= 4 ? Math.ceil(KRES.length / 2) : Infinity;
+  const clean = sh.map(s => new Set([...s].filter(x => freq.get(x) < lim)));
+  KRES.forEach(r => r.mirip = []);
+  for (let i = 0; i < KRES.length; i++) for (let j = i + 1; j < KRES.length; j++) {
+    const [S, L] = clean[i].size < clean[j].size ? [clean[i], clean[j]] : [clean[j], clean[i]];
+    if (S.size < 20) continue;
+    let c = 0; S.forEach(x => { if (L.has(x)) c++; });
+    const p = c / S.size;
+    if (p >= 0.35) { KRES[i].mirip.push({ nama: KRES[j].nama, p }); KRES[j].mirip.push({ nama: KRES[i].nama, p }); }
+  }
+  KRES.forEach(r => { r.mirip.sort((a, b) => b.p - a.p); r.ai = aiSignals(r.fullText); r.ref = RX_REF.test(r.fullText); buildFeedback(r); });
+}
+
+function buildFeedback(r) {
+  const pctB = r.detail.map(d => d.max ? d.skor / d.max * 100 : 0), avg = r.jawab / (KEY.total || 1) * 100;
+  r.kesesuaian = avg >= 80 ? "Sangat sesuai" : avg >= 60 ? "Sesuai" : avg >= 40 ? "Cukup sesuai" : "Kurang sesuai";
+  r.analisis = r.detail.map((d, j) => {
+    const ok = d.cs.filter(c => c.cr === 1).length, half = d.cs.filter(c => c.cr === 0.5).length, miss = d.cs.filter(c => c.cr === 0);
+    const st = pctB[j] >= 80 ? "sesuai" : pctB[j] >= 50 ? "sebagian sesuai" : "kurang sesuai";
+    return `${d.label} (${fmt(d.skor)}/${fmt(d.max)}) ${st}: ${ok}${half ? ` (+${half} sebagian)` : ""} dari ${d.cs.length} poin kunci terpenuhi.` +
+      (miss.length && pctB[j] < 100 ? ` Belum dibahas: ${miss.slice(0, 2).map(c => shortTxt(c.text)).join("; ")}.` : "");
+  });
+  const weak = r.detail.map((d, j) => ({ d, p: pctB[j], ref: KEY.items[j].ref })).filter(x => x.p < 70).sort((a, b) => a.p - b.p);
+  const rek = weak.map(x => `Perdalam ${x.d.label}${x.ref ? ` (modul ${x.ref})` : ""}.`);
+  if (!r.ref) rek.push("Cantumkan rujukan modul/BMP yang digunakan.");
+  if (r.mirip.length) rek.push(`Periksa kemiripan dengan ${r.mirip.slice(0, 2).map(m => `${m.nama} (${Math.round(m.p * 100)}%)`).join(", ")}.`);
+  if (r.ai.level !== "rendah") rek.push(`Indikasi gaya teks AI ${r.ai.level}: minta mahasiswa menjelaskan jawabannya dengan kata-kata sendiri.`);
+  if (r.whole) rek.push("Minta mahasiswa memberi penanda nomor soal (Soal 1, Soal 2, …).");
+  if (!rek.length) rek.push("Pertahankan kualitas jawaban.");
+  r.rekomendasi = rek;
+  if (!r.fbManual) {
+    const s = [avg >= 80 ? "Jawaban Anda sudah sesuai dengan tugas dan mencakup sebagian besar konsep yang diminta."
+      : avg >= 60 ? "Jawaban Anda cukup sesuai dengan tugas, namun beberapa konsep penting belum dibahas lengkap."
+      : avg >= 40 ? "Jawaban Anda baru sebagian menjawab tugas; banyak konsep kunci belum dibahas."
+      : "Jawaban Anda belum sesuai dengan tugas yang diminta."];
+    if (r.mirip.length) s.push("Jawaban memiliki kemiripan tinggi dengan mahasiswa lain; kerjakan secara mandiri.");
+    if (r.ai.level === "tinggi") s.push("Hindari menyalin jawaban dari AI; tuliskan analisis dengan bahasa sendiri.");
+    if (weak.length) s.push(`Perdalam ${weak.slice(0, 2).map(x => x.d.label.toLowerCase() + (x.ref ? ` (modul ${x.ref.split(";")[0]})` : "")).join(" dan ")}.`);
+    if (!r.ref) s.push("Cantumkan rujukan modul yang digunakan.");
+    s.push(avg >= 80 ? "Pertahankan!" : "Terus tingkatkan.");
+    const out = []; for (const x of s) if ([...out, x].join(" ").split(/\s+/).length <= 50) out.push(x);
+    r.tanggapan = out.join(" ");
+  }
+}
+
+function renderAnalisis(m) {
+  const kc = { "Sangat sesuai": "b-ok", "Sesuai": "b-ok", "Cukup sesuai": "b-warn", "Kurang sesuai": "b-bad" }[m.kesesuaian];
+  const wc = String(m.tanggapan || "").trim().split(/\s+/).filter(Boolean).length;
+  return `
+    <h4>Analisis &amp; Tanggapan</h4>
+    <div class="chips">
+      <span class="badge ${kc}">Kesesuaian: ${m.kesesuaian}</span>
+      <span class="badge ${m.ref ? "b-ok" : "b-warn"}">Rujukan modul: ${m.ref ? "ada" : "tidak ada"}</span>
+      <span class="badge ${m.mirip.length ? "b-bad" : "b-ok"}">Kemiripan: ${m.mirip.length ? m.mirip.slice(0, 2).map(x => `${esc(x.nama)} ${Math.round(x.p * 100)}%`).join(", ") : "tidak terdeteksi"}</span>
+      <span class="badge ${m.ai.level === "tinggi" ? "b-bad" : m.ai.level === "sedang" ? "b-warn" : "b-ok"}">Indikasi gaya AI: ${m.ai.level}</span>
+    </div>
+    ${m.ai.marks.length ? `<p class="legend">Ciri gaya AI yang ditemukan: ${m.ai.marks.map(esc).join(", ")}</p>` : ""}
+    <b>Analisis kesesuaian per butir</b><ul>${m.analisis.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
+    <b>Rekomendasi</b><ul>${m.rekomendasi.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
+    <b>Tanggapan untuk mahasiswa</b> <span class="legend" id="eWc">${wc}/50 kata${wc > 50 ? " — terlalu panjang" : ""}</span>
+    <textarea id="eFb" rows="3">${esc(m.tanggapan)}</textarea>
+    <div class="small-btns"><button id="eCopy">📋 Salin tanggapan</button><button id="eRegen">↺ Buat ulang otomatis</button></div>
+    <p class="legend">Kemiripan dan indikasi AI adalah sinyal otomatis, <b>bukan bukti</b>. Periksa jawabannya sebelum mengambil keputusan.</p>`;
+}
+function wireAnalisis(m) {
+  const box = $("#eAnalisis"); box.innerHTML = renderAnalisis(m);
+  $("#eFb").addEventListener("input", e => {
+    m.tanggapan = e.target.value; m.fbManual = true; (OVR[ovKey(m)] ||= { s: {} }).fb = m.tanggapan;
+    const wc = m.tanggapan.trim().split(/\s+/).filter(Boolean).length;
+    $("#eWc").textContent = `${wc}/50 kata${wc > 50 ? " — terlalu panjang" : ""}`;
+  });
+  $("#eCopy").addEventListener("click", () => navigator.clipboard?.writeText(m.tanggapan).then(() => { $("#eCopy").textContent = "✔ Tersalin"; }));
+  $("#eRegen").addEventListener("click", () => { m.fbManual = false; const o = OVR[ovKey(m)]; if (o) delete o.fb; buildFeedback(m); wireAnalisis(m); renderK(); });
+}
+
 function runGrade() {
   $("#applyStatus").textContent = "";
   if (!KEY) { setStatus("#keyStatus", "Unggah kunci jawaban / pedoman penskoran terlebih dahulu.", "err"); return; }
@@ -945,6 +1050,7 @@ function runGrade() {
   });
   KRES = students.map((s, i) => ({ no: i + 1, ...s }));
   KRES.forEach(essay ? scoreStudentEssay : scoreStudentPG);
+  if (essay) { KRES.forEach(r => { if (!r.fullText) r.fullText = (r.answers || []).join("\n"); }); analyzeEssays(); }
   const whole = KRES.filter(r => r.whole).length;
   if (essay && whole) warn.push(`${whole} jawaban tidak memakai penanda "Soal 1 / Nomor 1 / Butir 1", sehingga tiap butir dicocokkan dengan seluruh isi jawaban — periksa skornya.`);
   $("#ansStatus").className = "fstatus " + (warn.length ? "" : "ok");
@@ -966,7 +1072,8 @@ function renderK() {
     ["", "Rata-rata Nilai", fmt(skor.reduce((a, c) => a + c, 0) / n), `skala 0–${scale}`],
     ["ok", "Tertinggi", fmt(all.length ? Math.max(...skor) : 0), ""],
     ["bad", "Terendah", fmt(all.length ? Math.min(...skor) : 0), ""],
-    ["ok", "Tuntas", tuntas, `nilai ≥ ${CONFIG.batasLulus} (skala 100)`]
+    ["ok", "Tuntas", tuntas, `nilai ≥ ${CONFIG.batasLulus} (skala 100)`],
+    ...(essay ? [["warn", "Perlu Diperiksa", all.filter(m => m.mirip?.length || m.ai?.level === "tinggi").length, "jawaban mirip / indikasi AI"]] : [])
   ].map(([c, l, v, h]) => `<div class="card ${c}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="hint">${h}</div></div>`).join("");
 
   const cols = essay
@@ -979,7 +1086,10 @@ function renderK() {
     const mid = essay
       ? m.detail.map(d => `<td class="num">${fmt(d.skor)}${d.manual ? "✎" : ""}</td>`).join("") + (KEY.bahasa ? `<td class="num">${fmt(m.bahasa)}</td>` : "")
       : `<td class="num">${m.benar}</td><td class="num">${m.salah}</td><td class="num">${m.kosong}</td>`;
-    return `<tr data-no="${m.no}"><td>${m.no}</td><td>${esc(m.nim) || "–"}</td><td><b>${esc(m.nama)}</b>${m.whole ? ' <span class="badge b-warn" title="Tanpa penanda butir">cek</span>' : ""}</td>${mid}<td class="num">${badge}</td><td class="legend">${esc(m.file)}</td></tr>`;
+    const flags = essay ? (m.mirip?.length ? ` <span class="badge b-bad" title="Mirip dengan ${esc(m.mirip.map(x => x.nama).join(", "))}">Mirip</span>` : "") +
+      (m.ai && m.ai.level !== "rendah" ? ` <span class="badge ${m.ai.level === "tinggi" ? "b-bad" : "b-warn"}" title="Indikasi gaya teks AI (bukan bukti)">AI?</span>` : "") +
+      (m.ref === false ? ` <span class="badge b-warn" title="Tidak menyebut rujukan modul">Tanpa rujukan</span>` : "") : "";
+    return `<tr data-no="${m.no}"><td>${m.no}</td><td>${esc(m.nim) || "–"}</td><td><b>${esc(m.nama)}</b>${m.whole ? ' <span class="badge b-warn" title="Tanpa penanda butir">cek</span>' : ""}${flags}</td>${mid}<td class="num">${badge}</td><td class="legend">${esc(m.file)}</td></tr>`;
   }).join("") : `<tr><td colspan="${cols.length}" class="empty">Tidak ada data yang cocok.</td></tr>`;
 
   const pct = essay
@@ -1029,6 +1139,8 @@ function openK(no) {
       ${KEY.bahasa ? `<div><span>Skor Bahasa (maks ${KEY.bahasa})</span><b><input type="number" class="ov" id="eBahasa" min="0" max="${KEY.bahasa}" step="0.5" value="${m.bahasa}"></b></div>` : ""}
     </div>
     ${m.whole ? `<p class="fstatus" style="color:var(--warn)">⚠ Jawaban ini tidak memakai penanda "Soal 1 / Nomor 1", jadi setiap butir dicocokkan dengan seluruh isi jawaban. Periksa skornya.</p>` : ""}
+    <div class="analisis" id="eAnalisis"></div>
+    <h4 style="margin:14px 0 4px">Rincian skor per butir</h4>
     ${m.detail.map((d, j) => `
       <div class="butir">
         <div class="bhead"><b>${esc(d.label)}</b>
@@ -1044,8 +1156,10 @@ function openK(no) {
     if (inp.id === "eBahasa") { m.bahasa = o.b = Math.max(0, Math.min(KEY.bahasa, +inp.value || 0)); }
     else { const j = +inp.dataset.j, d = m.detail[j]; d.skor = o.s[j] = Math.max(0, Math.min(d.max, +inp.value || 0)); d.manual = true; }
     calcEssay(m); $("#eNilai").textContent = fmt(m.skor); $("#eJawab").textContent = `${fmt(m.jawab)} / ${fmt(KEY.total)}`;
+    buildFeedback(m); wireAnalisis(m);
     renderK();
   }));
+  wireAnalisis(m);
   $("#modal").showModal();
 }
 
@@ -1084,8 +1198,11 @@ function applyToDashboard() {
 function exportK() {
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   if (KEY.mode === "rubrik") {
-    const head = ["NIM", "Nama", "Kelas", "File", ...KEY.items.map(it => `${it.label} (maks ${it.max})`), "Skor Jawaban", ...(KEY.bahasa ? [`Bahasa (maks ${KEY.bahasa})`] : []), "Nilai Akhir"];
-    const rows = KRES.map(m => [m.nim, m.nama, m.kelas, m.file, ...m.detail.map(d => fmt(d.skor)), fmt(m.jawab), ...(KEY.bahasa ? [fmt(m.bahasa)] : []), fmt(m.skor)].map(q).join(";"));
+    const head = ["NIM", "Nama", "Kelas", "File", ...KEY.items.map(it => `${it.label} (maks ${it.max})`), "Skor Jawaban", ...(KEY.bahasa ? [`Bahasa (maks ${KEY.bahasa})`] : []), "Nilai Akhir",
+      "Kesesuaian", "Rujukan Modul", "Kemiripan", "Indikasi Gaya AI", "Analisis", "Rekomendasi", "Tanggapan"];
+    const rows = KRES.map(m => [m.nim, m.nama, m.kelas, m.file, ...m.detail.map(d => fmt(d.skor)), fmt(m.jawab), ...(KEY.bahasa ? [fmt(m.bahasa)] : []), fmt(m.skor),
+      m.kesesuaian, m.ref ? "Ada" : "Tidak ada", m.mirip.map(x => `${x.nama} ${Math.round(x.p * 100)}%`).join(", ") || "-", m.ai.level,
+      m.analisis.join(" "), m.rekomendasi.join(" "), m.tanggapan].map(q).join(";"));
     download("hasil-penilaian-esai.csv", [head.map(q).join(";"), ...rows].join("\n")); return;
   }
   const head = ["NIM", "Nama", "Kelas", "File", "Benar", "Salah", "Kosong", "Nilai", ...KEY.items.map(it => it.label)];

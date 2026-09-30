@@ -79,6 +79,14 @@ Unggah **pedoman penskoran Word (.docx)** sebagai kunci jawaban, yaitu dokumen d
 - Skor setiap butir adalah **saran otomatis** berdasarkan seberapa banyak poin kunci yang muncul dalam jawaban. Secara bawaan, skor penuh diberikan bila ≥ 60% poin kunci terpenuhi (dapat diubah).
 - Klik nama mahasiswa untuk melihat poin kunci yang ✓ ditemukan, ◐ sebagian, atau ✗ tidak ditemukan, membaca jawabannya, **mengubah skor per butir**, dan mengisi **skor bahasa**.
 
+**Analisis & tanggapan otomatis (mode esai).** Setiap mahasiswa mendapat:
+- **Kesesuaian dengan tugas**: Sangat sesuai / Sesuai / Cukup / Kurang, dengan analisis per butir (poin kunci yang terpenuhi dan yang belum dibahas).
+- **Rujukan modul**: apakah jawaban menyebut modul/BMP/halaman/daftar pustaka. Halaman modul dari pedoman (mis. hal. 4.23) dipakai dalam rekomendasi.
+- **Kemiripan antar-mahasiswa**: pasangan jawaban yang ≥ 35% frasanya sama ditandai **Mirip**.
+- **Indikasi gaya teks AI**: frasa khas AI, format markdown (**…**), emoji, dan sejenisnya ditandai **AI?**. Ini sinyal, bukan bukti.
+- **Rekomendasi** dan **tanggapan untuk mahasiswa (maks. 50 kata)** yang dapat diedit dan disalin.
+Semua kolom ini ikut dalam **Ekspor Hasil Koreksi**.
+
 Keterbatasan: pencocokan berbasis kata kunci tidak bisa menilai logika atau argumen, dan tidak mendeteksi jawaban yang **menyangkal** konsep (mis. "variabel internal **adalah** faktor utama" tetap dianggap menyebut konsep itu). Karena itu skor otomatis sebaiknya diperiksa, terutama untuk nilai yang mepet.
 
 Catatan: pencocokan jawaban tidak membedakan huruf besar/kecil dan spasi. Untuk pilihan ganda, jawaban "B. Harga pokok" dianggap B. Jawaban uraian/esai bebas tetap perlu dinilai manual.
